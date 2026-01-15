@@ -1,28 +1,63 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 // =============================================================================
+// AUTH HELPERS
+// =============================================================================
+
+const AUTH_KEY = 'seduvi_auth_token';
+const USER_KEY = 'seduvi_user';
+
+const getStoredAuth = () => {
+  const token = localStorage.getItem(AUTH_KEY);
+  const user = localStorage.getItem(USER_KEY);
+  if (token && user) {
+    return { token, user: JSON.parse(user) };
+  }
+  return null;
+};
+
+const setStoredAuth = (token, user) => {
+  localStorage.setItem(AUTH_KEY, token);
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+};
+
+const clearStoredAuth = () => {
+  localStorage.removeItem(AUTH_KEY);
+  localStorage.removeItem(USER_KEY);
+};
+
+// =============================================================================
 // API CLIENT
 // =============================================================================
 
-const api = {
+const createApi = (getToken) => ({
   async get(endpoint) {
-    const res = await fetch(`/api${endpoint}`);
+    const token = getToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const res = await fetch(`/api${endpoint}`, { headers });
     if (!res.ok) throw new Error(`API error: ${res.status}`);
     return res.json();
   },
   async post(endpoint, data) {
+    const token = getToken();
+    const headers = { 
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
     const res = await fetch(`/api${endpoint}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error(`API error: ${res.status}`);
     return res.json();
   },
   async upload(file) {
+    const token = getToken();
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const res = await fetch('/api/upload', { method: 'POST', body: formData, headers });
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || 'Upload failed');
@@ -30,10 +65,12 @@ const api = {
     return res.json();
   },
   async delete(endpoint) {
-    const res = await fetch(`/api${endpoint}`, { method: 'DELETE' });
+    const token = getToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const res = await fetch(`/api${endpoint}`, { method: 'DELETE', headers });
     return res.json();
   }
-};
+});
 
 // =============================================================================
 // ÁREA DE CONSERVACIÓN PATRIMONIAL (ACP)
@@ -808,6 +845,9 @@ const PropertyCard = ({ property }) => {
 // MAIN APP COMPONENT
 // =============================================================================
 
+// Google Client ID
+const GOOGLE_CLIENT_ID = '1003938952498-ij3m51a2rj1bpgtcctf4dak1dji4cq1s.apps.googleusercontent.com';
+
 export default function App() {
   const [stats, setStats] = useState({ totalPredios: 0, alcaldias: [] });
   const [searchQuery, setSearchQuery] = useState('');
@@ -820,14 +860,96 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [isChatting, setIsChatting] = useState(false);
+  const [user, setUser] = useState(null);
+  const [authToken, setAuthToken] = useState(null);
+  const [googleLoaded, setGoogleLoaded] = useState(false);
   const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  // Create API instance with current token
+  const api = createApi(() => authToken);
+
+  // Load Google Sign-In script
+  useEffect(() => {
+    // Check for stored auth
+    const stored = getStoredAuth();
+    if (stored) {
+      setAuthToken(stored.token);
+      setUser(stored.user);
+    }
+
+    // Load Google Identity Services
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setGoogleLoaded(true);
+    document.body.appendChild(script);
+
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, []);
+
+  // Initialize Google Sign-In when loaded
+  useEffect(() => {
+    if (googleLoaded && window.google && !user) {
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleLogin,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+    }
+  }, [googleLoaded, user]);
+
+  const handleGoogleLogin = async (response) => {
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential })
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setAuthToken(data.token);
+        setUser(data.user);
+        setStoredAuth(data.token, data.user);
+        loadHistory(); // Reload history for this user
+      } else {
+        console.error('Login failed:', data.error);
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+    }
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setAuthToken(null);
+    clearStoredAuth();
+    setSearchHistory([]);
+  };
+
+  const showGoogleLoginPrompt = () => {
+    if (window.google) {
+      window.google.accounts.id.prompt();
+    }
+  };
 
   // Load initial data
   useEffect(() => {
     loadStats();
-    loadHistory();
   }, []);
+
+  // Load history when auth changes
+  useEffect(() => {
+    loadHistory();
+  }, [authToken]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -908,7 +1030,7 @@ export default function App() {
     }
   };
 
-  // AI Chat - uses backend proxy
+  // AI Chat - uses backend proxy with FULL property context
   const handleChat = async () => {
     if (!chatInput.trim() || isChatting || !selectedProperty) return;
     
@@ -917,23 +1039,86 @@ export default function App() {
     setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsChatting(true);
     
+    // Calculate all property values
     const supTerreno = parseFloat(selectedProperty.superficie) || 0;
     const niveles = parseInt(selectedProperty.niveles) || 4;
     const areaLibre = parseFloat(selectedProperty.area_libre) || 20;
     const cosMax = (100 - areaLibre) / 100;
+    const cusMax = cosMax * niveles;
+    const supDesplante = supTerreno * cosMax;
+    const supMaxConst = supTerreno * cusMax;
     const restricciones = getRestricciones(selectedProperty);
     
-    let restriccionesTexto = restricciones.map(r => {
-      if (r.tipo === 'ACP') return `ACP: ${r.requisitos.join('. ')}`;
-      return `${r.titulo}: NO permitido: ${r.prohibidos.join(', ')}`;
-    }).join('\n');
+    // Calculate viviendas
+    let numViviendas = 'N/A';
+    const densidad = selectedProperty.densidad_d;
+    if (densidad) {
+      const match = densidad.match(/(\d+)\s*VIV/i);
+      if (match) {
+        const vivPor = parseInt(match[1]);
+        const viv = supMaxConst / vivPor;
+        numViviendas = viv >= 0.5 ? Math.round(viv) : Math.floor(viv);
+      }
+    }
     
-    const systemPrompt = `Experto en desarrollo urbano CDMX. Predio: ${selectedProperty.calle} ${selectedProperty.no_externo}, ${selectedProperty.colonia}, ${selectedProperty.alcaldia}. Superficie: ${supTerreno}m², Uso: ${selectedProperty.uso_descri}, Niveles: ${niveles}, Área libre: ${areaLibre}%, COS: ${cosMax.toFixed(2)}, CUS: ${(cosMax*niveles).toFixed(2)}. ${restriccionesTexto}. Responde en español, práctico y específico.`;
+    // Build comprehensive restrictions text
+    let restriccionesTexto = '';
+    if (restricciones.length > 0) {
+      restriccionesTexto = '\n\nRESTRICCIONES ESPECIALES:\n' + restricciones.map(r => {
+        if (r.tipo === 'ACP') {
+          return `- ÁREA DE CONSERVACIÓN PATRIMONIAL (ACP): ${r.requisitos.join('. ')}`;
+        }
+        return `- ${r.titulo}: Usos NO permitidos: ${r.prohibidos.join(', ')}`;
+      }).join('\n');
+    }
+    
+    // Build comprehensive system prompt with ALL property data
+    const systemPrompt = `Eres un experto en desarrollo urbano de la Ciudad de México. YA TIENES TODA la información del predio que el usuario está consultando. NO pidas la dirección ni datos adicionales - ya los tienes aquí:
+
+===== DATOS DEL PREDIO =====
+📍 DIRECCIÓN COMPLETA: ${selectedProperty.calle} ${selectedProperty.no_externo}, Colonia ${selectedProperty.colonia}, Alcaldía ${selectedProperty.alcaldia || 'N/A'}, CP ${selectedProperty.codigo_pos || 'N/A'}
+
+📐 CARACTERÍSTICAS FÍSICAS:
+- Superficie del terreno: ${supTerreno} m²
+- Uso de suelo: ${selectedProperty.uso_descri}
+- Niveles permitidos: ${niveles}
+- Altura permitida: ${selectedProperty.altura || 'No especificada'}
+- Área libre requerida: ${areaLibre}%
+
+📊 CÁLCULOS DE INTENSIDAD:
+- COS máximo: ${cosMax.toFixed(2)} (${(cosMax*100).toFixed(0)}%)
+- CUS máximo: ${cusMax.toFixed(2)}
+- Superficie máxima de desplante: ${supDesplante.toFixed(2)} m²
+- Superficie máxima de construcción: ${supMaxConst.toFixed(2)} m²
+- Densidad: ${selectedProperty.densidad_d || 'No aplica'}
+- Viviendas permitidas: ${numViviendas}
+- Mínimo m² por vivienda: ${selectedProperty.minimo_viv || 'No especificado'}
+${restriccionesTexto}
+
+===== REGLAS DE MANIFESTACIÓN DE CONSTRUCCIÓN =====
+- TIPO A (Simplificada): Hasta 200m² de construcción, no requiere DRO
+- TIPO B (Con DRO): Hasta 5,000m² o hasta 5 niveles, requiere DRO
+- TIPO C (Especial): Más de 5,000m² o más de 5 niveles, requiere DRO + Corresponsables
+
+INSTRUCCIONES:
+1. NUNCA pidas la dirección - ya la tienes arriba
+2. NUNCA pidas que el usuario proporcione datos que ya tienes
+3. Responde de manera directa y específica para ESTE predio
+4. Usa los números exactos calculados arriba
+5. Responde en español, de forma práctica y útil
+6. Si te preguntan sobre usos permitidos, basa tu respuesta en el uso de suelo: "${selectedProperty.uso_descri}"
+7. Si te preguntan sobre construcción, usa los cálculos de superficie máxima`;
     
     try {
+      const token = authToken;
+      const headers = { 
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      };
+      
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           systemPrompt,
           messages: chatMessages.concat([{ role: 'user', content: userMessage }])
@@ -971,11 +1156,48 @@ export default function App() {
             </div>
           </div>
           
-          {selectedProperty && (
-            <button onClick={() => setSelectedProperty(null)} className="text-lime-200 hover:text-white text-sm">
-              ← Volver
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {selectedProperty && (
+              <button onClick={() => setSelectedProperty(null)} className="text-lime-200 hover:text-white text-sm">
+                ← Volver
+              </button>
+            )}
+            
+            {/* Auth Section */}
+            {user ? (
+              <div className="flex items-center gap-2">
+                <img 
+                  src={user.picture} 
+                  alt={user.name}
+                  className="w-8 h-8 rounded-full border-2 border-lime-300"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="hidden sm:block">
+                  <div className="text-white text-sm font-medium">{user.name?.split(' ')[0]}</div>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="text-lime-200 hover:text-white text-xs ml-1"
+                  title="Cerrar sesión"
+                >
+                  Salir
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={showGoogleLoginPrompt}
+                className="flex items-center gap-2 bg-white text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-lime-50 transition-colors"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Ingresar
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -1050,7 +1272,10 @@ export default function App() {
             {searchHistory.length > 0 && searchResults.length === 0 && (
               <div className="bg-white rounded-xl shadow-lg p-4">
                 <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-semibold text-slate-700">🕐 Historial</h3>
+                  <h3 className="font-semibold text-slate-700">
+                    🕐 {user ? 'Tu Historial' : 'Historial'}
+                    {user && <span className="text-xs text-slate-400 ml-2 font-normal">(guardado en tu cuenta)</span>}
+                  </h3>
                   <button onClick={clearHistory} className="text-xs text-slate-400 hover:text-red-500">Limpiar</button>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -1100,6 +1325,15 @@ export default function App() {
                 <div className="text-5xl mb-4">📂</div>
                 <h2 className="text-xl font-bold mb-2">Cargar datos SEDUVI</h2>
                 <p className="text-slate-500 mb-4">Sube los archivos CSV de las alcaldías</p>
+                
+                {!user && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                    <p className="text-blue-800 text-sm">
+                      💡 <button onClick={showGoogleLoginPrompt} className="underline font-medium">Inicia sesión con Google</button> para guardar tu historial de búsquedas
+                    </p>
+                  </div>
+                )}
+                
                 <div className="text-left max-w-md mx-auto bg-slate-50 rounded-lg p-4 text-sm">
                   <p className="font-semibold mb-2">Archivos disponibles:</p>
                   <ul className="space-y-1 text-slate-600">

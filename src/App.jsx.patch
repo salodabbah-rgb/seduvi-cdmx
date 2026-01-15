@@ -1,0 +1,84 @@
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -1,36 +1,75 @@
+ import React, { useState, useEffect, useRef } from 'react';
+
+ // =============================================================================
++// AUTH HELPERS
++// =============================================================================
++
++const AUTH_KEY = 'seduvi_auth_token';
++const USER_KEY = 'seduvi_user';
++
++const getStoredAuth = () => {
++  const token = localStorage.getItem(AUTH_KEY);
++  const user = localStorage.getItem(USER_KEY);
++  if (token && user) {
++    return { token, user: JSON.parse(user) };
++  }
++  return null;
++};
++
++const setStoredAuth = (token, user) => {
++  localStorage.setItem(AUTH_KEY, token);
++  localStorage.setItem(USER_KEY, JSON.stringify(user));
++};
++
++const clearStoredAuth = () => {
++  localStorage.removeItem(AUTH_KEY);
++  localStorage.removeItem(USER_KEY);
++};
++
++// =============================================================================
+ // API CLIENT
+ // =============================================================================
+
+-const api = {
+-  async get(endpoint) {
+-    const res = await fetch(`/api${endpoint}`);
++const createApi = (getToken) => ({
++  async get(endpoint) {
++    const token = getToken();
++    const headers = token ? { 'Authorization': \`Bearer \${token}\` } : {};
++    const res = await fetch(\`/api\${endpoint}\`, { headers });
+     if (!res.ok) throw new Error(\`API error: \${res.status}\`);
+     return res.json();
+   },
+   async post(endpoint, data) {
+-    const res = await fetch(\`/api\${endpoint}\`, {
++    const token = getToken();
++    const headers = { 
++      'Content-Type': 'application/json',
++      ...(token ? { 'Authorization': \`Bearer \${token}\` } : {})
++    };
++    const res = await fetch(\`/api\${endpoint}\`, {
+       method: 'POST',
+-      headers: { 'Content-Type': 'application/json' },
++      headers,
+       body: JSON.stringify(data)
+     });
+     if (!res.ok) throw new Error(\`API error: \${res.status}\`);
+     return res.json();
+   },
+   async upload(file) {
++    const token = getToken();
+     const formData = new FormData();
+     formData.append('file', file);
+-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
++    const headers = token ? { 'Authorization': \`Bearer \${token}\` } : {};
++    const res = await fetch('/api/upload', { method: 'POST', body: formData, headers });
+     if (!res.ok) {
+       const err = await res.json();
+       throw new Error(err.error || 'Upload failed');
+     }
+     return res.json();
+   },
+   async delete(endpoint) {
+-    const res = await fetch(\`/api\${endpoint}\`, { method: 'DELETE' });
++    const token = getToken();
++    const headers = token ? { 'Authorization': \`Bearer \${token}\` } : {};
++    const res = await fetch(\`/api\${endpoint}\`, { method: 'DELETE', headers });
+     return res.json();
+   }
+-};
++});

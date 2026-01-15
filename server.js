@@ -7,9 +7,16 @@ const multer = require('multer');
 const { parse } = require('csv-parse');
 const path = require('path');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'seduvi-secret-key-change-in-production';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+
+// Google OAuth client
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // Database connection (Supabase PostgreSQL)
 const pool = new Pool({
@@ -24,6 +31,23 @@ app.use(cors());
 app.use(compression());
 app.use(express.json());
 
+// Auth middleware - extracts user from JWT if present
+const authMiddleware = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+    } catch (err) {
+      // Invalid token, continue without user
+    }
+  }
+  next();
+};
+
+app.use(authMiddleware);
+
 // File upload configuration
 const upload = multer({ 
   dest: 'uploads/',
@@ -37,7 +61,7 @@ const upload = multer({
 async function initDatabase() {
   const client = await pool.connect();
   try {
-    // Create table if not exists
+    // Create predios table
     await client.query(`
       CREATE TABLE IF NOT EXISTS predios (
         id SERIAL PRIMARY KEY,
@@ -60,7 +84,7 @@ async function initDatabase() {
       );
     `);
 
-    // Alter existing columns to TEXT if table already exists with smaller limits
+    // Alter existing columns to TEXT if table already exists
     await client.query(`
       ALTER TABLE predios ALTER COLUMN alcaldia TYPE TEXT;
       ALTER TABLE predios ALTER COLUMN calle TYPE TEXT;
@@ -72,10 +96,23 @@ async function initDatabase() {
       ALTER TABLE predios ALTER COLUMN altura TYPE VARCHAR(100);
       ALTER TABLE predios ALTER COLUMN area_libre TYPE VARCHAR(50);
       ALTER TABLE predios ALTER COLUMN minimo_viv TYPE VARCHAR(100);
-    `).catch(() => {}); // Ignore if columns already correct
+    `).catch(() => {});
 
+    // Users table for Google OAuth
     await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        google_id VARCHAR(255) UNIQUE NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        name VARCHAR(255),
+        picture TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
+    // Other tables and indexes
+    await client.query(`
       CREATE INDEX IF NOT EXISTS idx_predios_calle ON predios(calle);
       CREATE INDEX IF NOT EXISTS idx_predios_colonia ON predios(colonia);
       CREATE INDEX IF NOT EXISTS idx_predios_alcaldia ON predios(alcaldia);
@@ -83,10 +120,13 @@ async function initDatabase() {
       
       CREATE TABLE IF NOT EXISTS search_history (
         id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         query VARCHAR(255),
         results_count INTEGER,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      
+      CREATE INDEX IF NOT EXISTS idx_search_history_user ON search_history(user_id);
 
       CREATE TABLE IF NOT EXISTS alcaldias_loaded (
         id SERIAL PRIMARY KEY,
@@ -95,6 +135,12 @@ async function initDatabase() {
         loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    
+    // Add user_id column if it doesn't exist
+    await client.query(`
+      ALTER TABLE search_history ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+    `).catch(() => {});
+    
     console.log('✅ Database initialized successfully');
   } catch (err) {
     console.error('❌ Database initialization error:', err);
@@ -110,6 +156,84 @@ async function initDatabase() {
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// =============================================================================
+// GOOGLE AUTHENTICATION
+// =============================================================================
+
+// Google Sign-In
+app.post('/api/auth/google', async (req, res) => {
+  const { credential } = req.body;
+  
+  if (!credential) {
+    return res.status(400).json({ error: 'No credential provided' });
+  }
+  
+  if (!GOOGLE_CLIENT_ID) {
+    return res.status(500).json({ error: 'Google OAuth not configured' });
+  }
+  
+  try {
+    // Verify Google token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: GOOGLE_CLIENT_ID
+    });
+    
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+    
+    // Upsert user
+    const result = await pool.query(`
+      INSERT INTO users (google_id, email, name, picture, last_login)
+      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+      ON CONFLICT (google_id) DO UPDATE SET
+        name = EXCLUDED.name,
+        picture = EXCLUDED.picture,
+        last_login = CURRENT_TIMESTAMP
+      RETURNING id, google_id, email, name, picture
+    `, [googleId, email, name, picture]);
+    
+    const user = result.rows[0];
+    
+    // Generate JWT
+    const token = jwt.sign({
+      id: user.id,
+      googleId: user.google_id,
+      email: user.email,
+      name: user.name,
+      picture: user.picture
+    }, JWT_SECRET, { expiresIn: '30d' });
+    
+    res.json({ 
+      success: true, 
+      token, 
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        picture: user.picture
+      }
+    });
+    
+  } catch (err) {
+    console.error('Google auth error:', err);
+    res.status(401).json({ error: 'Invalid Google token' });
+  }
+});
+
+// Get current user
+app.get('/api/auth/me', (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  res.json({ user: req.user });
+});
+
+// Logout
+app.post('/api/auth/logout', (req, res) => {
+  res.json({ success: true });
 });
 
 // Get stats
@@ -165,11 +289,18 @@ app.get('/api/search', async (req, res) => {
     
     const result = await pool.query(query, params);
     
-    // Save to search history
-    await pool.query(
-      'INSERT INTO search_history (query, results_count) VALUES ($1, $2)',
-      [q, result.rows.length]
-    );
+    // Save to search history (with user_id if logged in)
+    if (req.user) {
+      await pool.query(
+        'INSERT INTO search_history (user_id, query, results_count) VALUES ($1, $2, $3)',
+        [req.user.id, q, result.rows.length]
+      );
+    } else {
+      await pool.query(
+        'INSERT INTO search_history (query, results_count) VALUES ($1, $2)',
+        [q, result.rows.length]
+      );
+    }
     
     res.json({
       results: result.rows,
@@ -196,15 +327,27 @@ app.get('/api/predio/:id', async (req, res) => {
   }
 });
 
-// Get search history
+// Get search history (per user if logged in)
 app.get('/api/history', async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT query, results_count, created_at 
-      FROM search_history 
-      ORDER BY created_at DESC 
-      LIMIT 20
-    `);
+    let result;
+    if (req.user) {
+      result = await pool.query(`
+        SELECT query, results_count, created_at 
+        FROM search_history 
+        WHERE user_id = $1
+        ORDER BY created_at DESC 
+        LIMIT 20
+      `, [req.user.id]);
+    } else {
+      result = await pool.query(`
+        SELECT query, results_count, created_at 
+        FROM search_history 
+        WHERE user_id IS NULL
+        ORDER BY created_at DESC 
+        LIMIT 20
+      `);
+    }
     res.json(result.rows);
   } catch (err) {
     console.error('History error:', err);
@@ -212,10 +355,14 @@ app.get('/api/history', async (req, res) => {
   }
 });
 
-// Clear search history
+// Clear search history (per user)
 app.delete('/api/history', async (req, res) => {
   try {
-    await pool.query('DELETE FROM search_history');
+    if (req.user) {
+      await pool.query('DELETE FROM search_history WHERE user_id = $1', [req.user.id]);
+    } else {
+      await pool.query('DELETE FROM search_history WHERE user_id IS NULL');
+    }
     res.json({ success: true });
   } catch (err) {
     console.error('Clear history error:', err);
@@ -263,12 +410,11 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     );
     
     if (existingResult.rows.length > 0) {
-      // Delete existing records for this alcaldía
       await pool.query('DELETE FROM predios WHERE UPPER(alcaldia) = UPPER($1)', [alcaldia]);
       await pool.query('DELETE FROM alcaldias_loaded WHERE alcaldia = $1', [alcaldia]);
     }
     
-    // FAST BATCH INSERT - insert 100 records at a time
+    // FAST BATCH INSERT
     const batchSize = 100;
     const client = await pool.connect();
     
@@ -278,7 +424,6 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       for (let i = 0; i < records.length; i += batchSize) {
         const batch = records.slice(i, i + batchSize);
         
-        // Build multi-row INSERT
         const values = [];
         const placeholders = [];
         let paramIndex = 1;
@@ -317,7 +462,6 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         console.log(`Inserted ${recordsInserted}/${records.length} records...`);
       }
       
-      // Record the loaded alcaldía
       await client.query(
         'INSERT INTO alcaldias_loaded (alcaldia, records_count) VALUES ($1, $2)',
         [alcaldia, recordsInserted]
@@ -331,7 +475,6 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       client.release();
     }
     
-    // Clean up uploaded file
     fs.unlinkSync(filePath);
     
     res.json({
@@ -343,7 +486,6 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     
   } catch (err) {
     console.error('Upload error:', err);
-    // Clean up on error
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
@@ -432,6 +574,7 @@ async function startServer() {
 ║  Port: ${PORT}                                                   ║
 ║  Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}                                    ║
 ║  Environment: ${process.env.NODE_ENV || 'development'}                                ║
+║  Google OAuth: ${GOOGLE_CLIENT_ID ? 'Configured' : 'Not configured'}                             ║
 ╚══════════════════════════════════════════════════════════════╝
     `);
   });
