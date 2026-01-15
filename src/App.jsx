@@ -451,12 +451,9 @@ const PropertyCard = ({ property, chatMessages, chatInput, setChatInput, handleC
     <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
       {/* Header */}
       <div className="bg-gradient-to-r from-gob-primary to-gob-dark px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-white font-bold">🏛️ CDMX</span>
-            <span className="text-lime-200 text-sm">Normatividad de Uso de Suelo</span>
-          </div>
-          <span className="text-lime-200 text-xs">{new Date().toLocaleDateString('es-MX')}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-white font-bold">📋</span>
+          <span className="text-white font-semibold">Normatividad de Uso de Suelo</span>
         </div>
       </div>
 
@@ -1273,113 +1270,113 @@ INSTRUCCIONES:
     }
   };
 
+  const showCenteredSearch = !selectedProperty && searchResults.length === 0;
+
   return (
-    <div className="min-h-screen bg-slate-100">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-gob-primary to-gob-dark px-4 py-3 shadow-lg sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🏛️</span>
-            <div>
-              <h1 className="text-white font-bold">SEDUVI CDMX</h1>
-              <p className="text-lime-200 text-xs">
-                {stats.totalPredios > 0 
-                  ? `${stats.totalPredios.toLocaleString()} predios en ${stats.alcaldias.length} alcaldía(s)`
-                  : 'Sin datos cargados'}
-              </p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-slate-50">
+      {/* Minimal Header - Login only */}
+      <header className="absolute top-0 right-0 p-4 z-10">
+        <div className="flex items-center gap-3">
+          {selectedProperty && (
+            <button 
+              onClick={() => setSelectedProperty(null)} 
+              className="text-slate-600 hover:text-gob-primary text-sm font-medium"
+            >
+              ← Volver
+            </button>
+          )}
           
-          <div className="flex items-center gap-3">
-            {selectedProperty && (
-              <button onClick={() => setSelectedProperty(null)} className="text-lime-200 hover:text-white text-sm">
-                ← Volver
+          {/* Auth Section */}
+          {user ? (
+            <div className="flex items-center gap-2 bg-white rounded-full px-3 py-1.5 shadow-sm">
+              <img 
+                src={user.picture} 
+                alt={user.name}
+                className="w-7 h-7 rounded-full"
+                referrerPolicy="no-referrer"
+              />
+              <span className="text-sm text-slate-700 hidden sm:block">{user.name?.split(' ')[0]}</span>
+              <button
+                onClick={handleLogout}
+                className="text-slate-400 hover:text-red-500 text-xs ml-1"
+                title="Cerrar sesión"
+              >
+                ✕
               </button>
-            )}
-            
-            {/* Auth Section */}
-            {user ? (
-              <div className="flex items-center gap-2">
-                <img 
-                  src={user.picture} 
-                  alt={user.name}
-                  className="w-8 h-8 rounded-full border-2 border-lime-300"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="hidden sm:block">
-                  <div className="text-white text-sm font-medium">{user.name?.split(' ')[0]}</div>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="text-lime-200 hover:text-white text-xs ml-1"
-                  title="Cerrar sesión"
-                >
-                  Salir
-                </button>
-              </div>
-            ) : (
-              <div ref={googleButtonRef} className="google-signin-btn" />
-            )}
-          </div>
+            </div>
+          ) : (
+            <div ref={googleButtonRef} className="google-signin-btn" />
+          )}
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto p-4">
+      <main className={`max-w-4xl mx-auto px-4 ${showCenteredSearch ? 'pt-[20vh]' : 'pt-20'}`}>
         {!selectedProperty ? (
-          <div className="space-y-4">
-            {/* Stats Bar */}
-            {stats.alcaldias.length > 0 && (
-              <div className="bg-white rounded-xl shadow-lg p-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-lime-600 text-lg">✓</span>
-                  <div className="text-sm text-slate-600">
-                    {stats.alcaldias.map(a => `${a.alcaldia} (${a.records_count.toLocaleString()} predios)`).join(' • ')}
+          <div className="space-y-6">
+            {/* Logo & Search - Centered Google Style */}
+            <div className={`${showCenteredSearch ? 'text-center mb-8' : ''}`}>
+              {showCenteredSearch && (
+                <div className="mb-8">
+                  <h1 className="text-6xl font-bold mb-2">
+                    <span className="text-gob-primary">G</span>
+                    <span className="text-slate-700">I</span>
+                    <span className="text-gob-primary">T</span>
+                    <span className="text-slate-700">O</span>
+                  </h1>
+                  <p className="text-slate-500 text-sm">Gestión Inteligente de Terrenos y Obras</p>
+                </div>
+              )}
+              
+              {/* Search Box */}
+              {stats.totalPredios > 0 && (
+                <div className={`${showCenteredSearch ? 'max-w-xl mx-auto' : ''}`}>
+                  <div className="bg-white rounded-full shadow-lg border border-slate-200 hover:shadow-xl transition-shadow flex items-center px-5 py-3">
+                    <span className="text-slate-400 mr-3">🔍</span>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                      placeholder="Buscar dirección: Durango 259, Roma Norte..."
+                      className="flex-1 outline-none text-slate-700 bg-transparent"
+                    />
+                    {searchQuery && (
+                      <button 
+                        onClick={() => setSearchQuery('')} 
+                        className="text-slate-400 hover:text-slate-600 mr-3"
+                      >
+                        ✕
+                      </button>
+                    )}
+                    <button
+                      onClick={handleSearch}
+                      disabled={isLoading}
+                      className="bg-gob-primary hover:bg-gob-dark disabled:bg-slate-300 text-white px-5 py-2 rounded-full font-medium text-sm transition-colors"
+                    >
+                      {isLoading ? '...' : 'Buscar'}
+                    </button>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Search */}
-            {stats.totalPredios > 0 && (
-              <div className="bg-white rounded-xl shadow-lg p-4">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                    placeholder="Buscar: Durango 259, Roma Norte..."
-                    className="flex-1 border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:border-gob-primary"
-                  />
-                  <button
-                    onClick={handleSearch}
-                    disabled={isLoading}
-                    className="bg-gob-primary hover:bg-gob-dark disabled:bg-slate-300 text-white px-6 py-3 rounded-lg font-medium"
-                  >
-                    {isLoading ? '...' : '🔍'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* History */}
-            {searchHistory.length > 0 && searchResults.length === 0 && (
-              <div className="bg-white rounded-xl shadow-lg p-4">
+            {/* History - Only when centered */}
+            {showCenteredSearch && searchHistory.length > 0 && (
+              <div className="max-w-xl mx-auto">
                 <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-semibold text-slate-700">
-                    🕐 {user ? 'Tu Historial' : 'Historial'}
-                    {user && <span className="text-xs text-slate-400 ml-2 font-normal">(guardado en tu cuenta)</span>}
+                  <h3 className="text-sm text-slate-500">
+                    🕐 Búsquedas recientes
                   </h3>
                   <button onClick={clearHistory} className="text-xs text-slate-400 hover:text-red-500">Limpiar</button>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {searchHistory.map((h, i) => (
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {searchHistory.slice(0, 8).map((h, i) => (
                     <button
                       key={i}
                       onClick={() => { setSearchQuery(h.query); }}
-                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-full text-sm"
+                      className="px-4 py-2 bg-white hover:bg-slate-100 rounded-full text-sm text-slate-600 shadow-sm border border-slate-200 transition-colors"
                     >
-                      {h.query} <span className="text-slate-400">({h.results_count})</span>
+                      {h.query}
                     </button>
                   ))}
                 </div>
@@ -1388,24 +1385,24 @@ INSTRUCCIONES:
 
             {/* Results */}
             {searchResults.length > 0 && (
-              <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                <div className="bg-slate-100 px-4 py-2 border-b flex justify-between items-center">
-                  <span className="font-semibold text-slate-700">{searchResults.length} resultados</span>
-                  <button onClick={() => setSearchResults([])} className="text-sm text-slate-500">✕</button>
+              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div className="bg-slate-50 px-5 py-3 border-b flex justify-between items-center">
+                  <span className="font-medium text-slate-700">{searchResults.length} resultados encontrados</span>
+                  <button onClick={() => setSearchResults([])} className="text-sm text-slate-400 hover:text-slate-600">✕ Cerrar</button>
                 </div>
                 <div className="divide-y max-h-[60vh] overflow-y-auto">
                   {searchResults.map((row) => (
                     <button
                       key={row.id}
                       onClick={() => setSelectedProperty(row)}
-                      className="w-full text-left px-4 py-3 hover:bg-slate-50"
+                      className="w-full text-left px-5 py-4 hover:bg-slate-50 transition-colors"
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <div className="font-semibold">{row.calle} {row.no_externo}</div>
+                          <div className="font-semibold text-slate-800">{row.calle} {row.no_externo}</div>
                           <div className="text-sm text-slate-500">{row.colonia} • {row.uso_descri}</div>
                         </div>
-                        <span className="text-gob-primary text-sm">Ver →</span>
+                        <span className="text-gob-primary text-sm font-medium">Ver →</span>
                       </div>
                     </button>
                   ))}
@@ -1415,23 +1412,20 @@ INSTRUCCIONES:
 
             {/* Empty State */}
             {stats.totalPredios === 0 && (
-              <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-                <div className="text-5xl mb-4">🏛️</div>
-                <h2 className="text-xl font-bold mb-2">Base de datos vacía</h2>
-                <p className="text-slate-500 mb-4">No hay predios cargados en la base de datos.</p>
-                
-                {!user && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                    <p className="text-blue-800 text-sm">
-                      💡 Inicia sesión con Google (arriba a la derecha) para guardar tu historial de búsquedas
-                    </p>
-                  </div>
-                )}
-                
-                <div className="text-left max-w-md mx-auto bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm">
-                  <p className="font-semibold text-amber-800 mb-2">⚠️ Contacta al administrador</p>
-                  <p className="text-amber-700">
-                    Los datos de SEDUVI deben ser cargados directamente en la base de datos por el administrador del sistema.
+              <div className="text-center py-12">
+                <div className="mb-8">
+                  <h1 className="text-6xl font-bold mb-2">
+                    <span className="text-gob-primary">G</span>
+                    <span className="text-slate-700">I</span>
+                    <span className="text-gob-primary">T</span>
+                    <span className="text-slate-700">O</span>
+                  </h1>
+                  <p className="text-slate-500 text-sm">Gestión Inteligente de Terrenos y Obras</p>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 max-w-md mx-auto">
+                  <p className="text-amber-800 font-medium mb-2">⚠️ Base de datos vacía</p>
+                  <p className="text-amber-700 text-sm">
+                    Contacta al administrador para cargar los datos de SEDUVI.
                   </p>
                 </div>
               </div>
