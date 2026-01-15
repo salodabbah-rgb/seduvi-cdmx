@@ -600,17 +600,79 @@ app.delete('/api/alcaldia/:name', async (req, res) => {
 });
 
 // =============================================================================
-// CLAUDE AI CHAT PROXY
+// REGLAMENTO DE CONSTRUCCIONES - KNOWLEDGE BASE
+// =============================================================================
+
+// Sistema de base de conocimiento del reglamento
+const REGLAMENTO_CONTEXT = `
+# REGLAMENTO DE CONSTRUCCIONES DE LA CIUDAD DE MÉXICO
+Publicación: 29 de enero de 2004 | Última reforma: 4 de octubre de 2024
+
+Eres un experto en normativa de construcción de la CDMX. Tu conocimiento incluye:
+- Reglamento de Construcciones CDMX completo (256 artículos)
+- Programas Parciales de Desarrollo Urbano (PDDU)
+- Áreas de Conservación Patrimonial (ACP)  
+- Normas Técnicas Complementarias
+
+## TÍTULOS DEL REGLAMENTO:
+1. DISPOSICIONES GENERALES - Definiciones, clasificación de edificaciones
+2. VÍA PÚBLICA - Alineamiento, uso de vía pública
+3. DIRECTORES RESPONSABLES DE OBRA (DRO) - Requisitos, responsabilidades
+4. MANIFESTACIONES DE CONSTRUCCIÓN - Tipos de trámites (Registro, Licencia)
+5. PROYECTO ARQUITECTÓNICO - Habitabilidad, accesibilidad, instalaciones
+6. SEGURIDAD ESTRUCTURAL - Cimentación, cargas, sismo, viento
+7. EJECUCIÓN DE OBRAS - Procedimientos constructivos, seguridad
+8. USO, OPERACIÓN Y MANTENIMIENTO
+9. AMPLIACIONES DE OBRAS
+10. DEMOLICIONES
+11. VISITAS, SANCIONES Y RECURSOS
+
+## ARTÍCULOS CLAVE:
+- Art. 54-60: Tipos de manifestaciones (Registro vs Licencia)
+- Art. 77-78: Áreas libres mínimas
+- Art. 84-86: Estacionamiento
+- Art. 143-166: Accesibilidad universal
+- Art. 32-51: Responsabilidades del DRO
+
+## INSTRUCCIONES:
+- Siempre cita el artículo específico del reglamento cuando aplique
+- Si no estás seguro, indica que se debe consultar el artículo específico
+- Menciona si se requiere DRO, corresponsable, o dictámenes especiales
+- Advierte sobre restricciones de ACP, INAH, o PDDU cuando aplique
+`;
+
+// =============================================================================
+// CLAUDE AI CHAT PROXY CON CONTEXTO DEL REGLAMENTO
 // =============================================================================
 
 app.post('/api/chat', async (req, res) => {
-  const { messages, systemPrompt } = req.body;
+  const { messages, systemPrompt, propertyData } = req.body;
   
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(500).json({ error: 'API key not configured' });
   }
   
   try {
+    // Construir contexto enriquecido
+    let enrichedSystemPrompt = REGLAMENTO_CONTEXT + '\n\n';
+    
+    if (systemPrompt) {
+      enrichedSystemPrompt += systemPrompt + '\n\n';
+    }
+    
+    // Agregar datos del predio si están disponibles
+    if (propertyData) {
+      enrichedSystemPrompt += `\n## DATOS DEL PREDIO EN CONSULTA:\n`;
+      enrichedSystemPrompt += `- Dirección: ${propertyData.calle} ${propertyData.no_externo}\n`;
+      enrichedSystemPrompt += `- Colonia: ${propertyData.colonia}\n`;
+      enrichedSystemPrompt += `- Alcaldía: ${propertyData.alcaldia}\n`;
+      enrichedSystemPrompt += `- Zonificación: ${propertyData.uso_descri}\n`;
+      enrichedSystemPrompt += `- Superficie: ${propertyData.superficie} m²\n`;
+      if (propertyData.niveles) enrichedSystemPrompt += `- Niveles permitidos: ${propertyData.niveles}\n`;
+      if (propertyData.altura) enrichedSystemPrompt += `- Altura máxima: ${propertyData.altura}\n`;
+      if (propertyData.area_libre) enrichedSystemPrompt += `- Área libre: ${propertyData.area_libre}\n`;
+    }
+    
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -620,8 +682,8 @@ app.post('/api/chat', async (req, res) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        system: systemPrompt,
+        max_tokens: 2000,
+        system: enrichedSystemPrompt,
         messages: messages
       })
     });
@@ -636,6 +698,192 @@ app.post('/api/chat', async (req, res) => {
   } catch (err) {
     console.error('Chat API error:', err);
     res.status(500).json({ error: 'Chat failed' });
+  }
+});
+
+// =============================================================================
+// ENDPOINTS DEL REGLAMENTO Y TRAMITOLOGÍA
+// =============================================================================
+
+// Buscar artículos del reglamento
+app.get('/api/reglamento/articulo/:numero', async (req, res) => {
+  try {
+    const articulosPath = path.join(__dirname, 'data', 'articulos_index.json');
+    if (!fs.existsSync(articulosPath)) {
+      return res.status(404).json({ error: 'Base de datos del reglamento no encontrada' });
+    }
+    
+    const articulos = JSON.parse(fs.readFileSync(articulosPath, 'utf-8'));
+    const articulo = articulos.find(a => a.articulo === req.params.numero);
+    
+    if (!articulo) {
+      return res.status(404).json({ error: 'Artículo no encontrado' });
+    }
+    
+    res.json(articulo);
+  } catch (err) {
+    res.status(500).json({ error: 'Error al consultar reglamento' });
+  }
+});
+
+// Buscar por palabra clave
+app.get('/api/reglamento/buscar', async (req, res) => {
+  try {
+    const { q } = req.query;
+    const articulosPath = path.join(__dirname, 'data', 'articulos_index.json');
+    
+    if (!fs.existsSync(articulosPath)) {
+      return res.status(404).json({ error: 'Base de datos del reglamento no encontrada' });
+    }
+    
+    const articulos = JSON.parse(fs.readFileSync(articulosPath, 'utf-8'));
+    
+    const results = articulos.filter(a =>
+      a.texto.toLowerCase().includes(q.toLowerCase()) ||
+      a.titulo.toLowerCase().includes(q.toLowerCase())
+    );
+    
+    res.json({ results: results.slice(0, 10) });
+  } catch (err) {
+    res.status(500).json({ error: 'Error en búsqueda' });
+  }
+});
+
+// Generar checklist de trámites
+app.post('/api/tramites/checklist', async (req, res) => {
+  try {
+    const { superficie, niveles, uso, colonia, alcaldia } = req.body;
+    
+    const checklist = {
+      preConstruccion: [],
+      registro: [],
+      permisos: [],
+      postConstruccion: [],
+      alertasEspeciales: [],
+      costoEstimado: 0,
+      tiempoEstimado: '30-60 días hábiles'
+    };
+    
+    // FASE 1: PRE-CONSTRUCCIÓN (siempre)
+    checklist.preConstruccion.push({
+      nombre: 'Constancia de Alineamiento y Número Oficial',
+      costo: 800,
+      tiempo: '3-5 días',
+      ventanilla: `SEDUVI ${alcaldia}`,
+      requisitos: ['Identificación oficial', 'Comprobante de propiedad', 'Pago de predial']
+    });
+    
+    checklist.preConstruccion.push({
+      nombre: 'Certificado de Zonificación (CEUZ)',
+      costo: 1800,
+      tiempo: '5-10 días',
+      ventanilla: 'SEDUVI Central',
+      requisitos: ['Constancia de alineamiento vigente', 'Pago de derechos']
+    });
+    
+    // FASE 2: REGISTRO/LICENCIA
+    const superficieNum = parseFloat(superficie) || 0;
+    const nivelesNum = parseInt(niveles) || 1;
+    
+    if (superficieNum <= 60 && nivelesNum <= 2) {
+      // Obra menor - solo manifestación
+      checklist.registro.push({
+        nombre: 'Registro de Manifestación de Construcción Tipo C (Obra Menor)',
+        costo: 2500,
+        tiempo: '3-5 días',
+        ventanilla: `SEDUVI ${alcaldia}`,
+        articulo: 'Art. 57',
+        requisitos: ['Proyecto arquitectónico', 'CEUZ vigente', 'DRO no requerido']
+      });
+    } else {
+      // Obra mayor - licencia
+      checklist.registro.push({
+        nombre: 'Licencia de Construcción Tipo A',
+        costo: superficieNum * 45, // Aproximado
+        tiempo: '10-20 días',
+        ventanilla: `SEDUVI ${alcaldia}`,
+        articulo: 'Art. 55',
+        requisitos: [
+          'Proyecto ejecutivo firmado por DRO',
+          'Memoria de cálculo estructural',
+          'CEUZ vigente',
+          'Pago de derechos'
+        ]
+      });
+      
+      checklist.alertasEspeciales.push({
+        tipo: 'DRO Requerido',
+        mensaje: 'Se requiere Director Responsable de Obra (DRO) registrado',
+        articulo: 'Art. 32-36'
+      });
+    }
+    
+    // Verificar si requiere Dictamen de Impacto Urbano
+    if (superficieNum > 5000) {
+      checklist.permisos.push({
+        nombre: 'Dictamen de Impacto Urbano (DUI)',
+        costo: 15000,
+        tiempo: '30-45 días',
+        ventanilla: 'SEDUVI Central',
+        requisitos: ['Estudio de impacto urbano', 'DRO especializado']
+      });
+    }
+    
+    // FASE 3: PERMISOS ESPECIALES
+    
+    // Área de Conservación Patrimonial
+    const ACP_COLONIAS = ['ROMA NORTE', 'ROMA SUR', 'CONDESA', 'CENTRO', 'CENTRO HISTORICO', 
+                          'JUAREZ', 'POLANCO', 'SAN ANGEL', 'COYOACAN'];
+    
+    if (ACP_COLONIAS.includes(colonia?.toUpperCase())) {
+      checklist.alertasEspeciales.push({
+        tipo: 'Área de Conservación Patrimonial (ACP)',
+        mensaje: 'Requiere dictamen de la Dirección del Patrimonio Cultural Urbano de SEDUVI',
+        requisitos: [
+          'Proyecto respetuoso con el contexto',
+          'Materiales y acabados acordes',
+          'Posible restricción de alturas'
+        ]
+      });
+      
+      checklist.permisos.push({
+        nombre: 'Dictamen ACP',
+        costo: 5000,
+        tiempo: '15-20 días',
+        ventanilla: 'SEDUVI - Dirección de Patrimonio Cultural Urbano'
+      });
+    }
+    
+    // FASE 4: POST-CONSTRUCCIÓN
+    checklist.postConstruccion.push({
+      nombre: 'Aviso de Terminación de Obra',
+      costo: 0,
+      tiempo: '1 día',
+      ventanilla: `SEDUVI ${alcaldia}`,
+      requisitos: ['Bitácora de obra', 'Fotografías']
+    });
+    
+    if (uso?.toLowerCase().includes('condominio') || uso?.toLowerCase().includes('departamento')) {
+      checklist.postConstruccion.push({
+        nombre: 'Declaratoria de Régimen de Propiedad en Condominio',
+        costo: 8000,
+        tiempo: '20-30 días',
+        ventanilla: 'Notaría + Registro Público',
+        requisitos: ['Planos arquitectónicos', 'Aviso de terminación']
+      });
+    }
+    
+    // Calcular totales
+    checklist.costoEstimado = 
+      checklist.preConstruccion.reduce((sum, t) => sum + t.costo, 0) +
+      checklist.registro.reduce((sum, t) => sum + t.costo, 0) +
+      checklist.permisos.reduce((sum, t) => sum + t.costo, 0) +
+      checklist.postConstruccion.reduce((sum, t) => sum + t.costo, 0);
+    
+    res.json(checklist);
+  } catch (err) {
+    console.error('Error generando checklist:', err);
+    res.status(500).json({ error: 'Error generando checklist' });
   }
 });
 
