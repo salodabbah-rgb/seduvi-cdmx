@@ -37,26 +37,44 @@ const upload = multer({
 async function initDatabase() {
   const client = await pool.connect();
   try {
+    // Create table if not exists
     await client.query(`
       CREATE TABLE IF NOT EXISTS predios (
         id SERIAL PRIMARY KEY,
-        alcaldia VARCHAR(100),
-        calle VARCHAR(255),
-        no_externo VARCHAR(50),
-        colonia VARCHAR(255),
-        codigo_pos VARCHAR(10),
+        alcaldia TEXT,
+        calle TEXT,
+        no_externo VARCHAR(100),
+        colonia TEXT,
+        codigo_pos VARCHAR(20),
         superficie DECIMAL(12,2),
         uso_descri TEXT,
-        densidad_d VARCHAR(100),
-        niveles VARCHAR(20),
-        altura VARCHAR(50),
-        area_libre VARCHAR(20),
-        minimo_viv VARCHAR(50),
+        densidad_d TEXT,
+        niveles VARCHAR(50),
+        altura VARCHAR(100),
+        area_libre VARCHAR(50),
+        minimo_viv VARCHAR(100),
         liga_ciuda TEXT,
         longitud DECIMAL(15,10),
         latitud DECIMAL(15,10),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Alter existing columns to TEXT if table already exists with smaller limits
+    await client.query(`
+      ALTER TABLE predios ALTER COLUMN alcaldia TYPE TEXT;
+      ALTER TABLE predios ALTER COLUMN calle TYPE TEXT;
+      ALTER TABLE predios ALTER COLUMN no_externo TYPE VARCHAR(100);
+      ALTER TABLE predios ALTER COLUMN colonia TYPE TEXT;
+      ALTER TABLE predios ALTER COLUMN codigo_pos TYPE VARCHAR(20);
+      ALTER TABLE predios ALTER COLUMN densidad_d TYPE TEXT;
+      ALTER TABLE predios ALTER COLUMN niveles TYPE VARCHAR(50);
+      ALTER TABLE predios ALTER COLUMN altura TYPE VARCHAR(100);
+      ALTER TABLE predios ALTER COLUMN area_libre TYPE VARCHAR(50);
+      ALTER TABLE predios ALTER COLUMN minimo_viv TYPE VARCHAR(100);
+    `).catch(() => {}); // Ignore if columns already correct
+
+    await client.query(`
 
       CREATE INDEX IF NOT EXISTS idx_predios_calle ON predios(calle);
       CREATE INDEX IF NOT EXISTS idx_predios_colonia ON predios(colonia);
@@ -335,6 +353,46 @@ app.delete('/api/alcaldia/:name', async (req, res) => {
   } catch (err) {
     console.error('Delete error:', err);
     res.status(500).json({ error: 'Error deleting alcaldía data' });
+  }
+});
+
+// =============================================================================
+// CLAUDE AI CHAT PROXY
+// =============================================================================
+
+app.post('/api/chat', async (req, res) => {
+  const { messages, systemPrompt } = req.body;
+  
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(500).json({ error: 'API key not configured' });
+  }
+  
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        system: systemPrompt,
+        messages: messages
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.error) {
+      return res.status(400).json({ error: data.error.message });
+    }
+    
+    res.json({ content: data.content[0].text });
+  } catch (err) {
+    console.error('Chat API error:', err);
+    res.status(500).json({ error: 'Chat failed' });
   }
 });
 

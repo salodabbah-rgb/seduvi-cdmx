@@ -451,7 +451,7 @@ export default function App() {
     }
   };
 
-  // AI Chat
+  // AI Chat - uses backend proxy
   const handleChat = async () => {
     if (!chatInput.trim() || isChatting || !selectedProperty) return;
     
@@ -471,21 +471,27 @@ export default function App() {
       return `${r.titulo}: NO permitido: ${r.prohibidos.join(', ')}`;
     }).join('\n');
     
+    const systemPrompt = `Experto en desarrollo urbano CDMX. Predio: ${selectedProperty.calle} ${selectedProperty.no_externo}, ${selectedProperty.colonia}, ${selectedProperty.alcaldia}. Superficie: ${supTerreno}m², Uso: ${selectedProperty.uso_descri}, Niveles: ${niveles}, Área libre: ${areaLibre}%, COS: ${cosMax.toFixed(2)}, CUS: ${(cosMax*niveles).toFixed(2)}. ${restriccionesTexto}. Responde en español, práctico y específico.`;
+    
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1500,
-          system: `Experto en desarrollo urbano CDMX. Predio: ${selectedProperty.calle} ${selectedProperty.no_externo}, ${selectedProperty.colonia}, ${selectedProperty.alcaldia}. Superficie: ${supTerreno}m², Uso: ${selectedProperty.uso_descri}, Niveles: ${niveles}, Área libre: ${areaLibre}%, COS: ${cosMax.toFixed(2)}, CUS: ${(cosMax*niveles).toFixed(2)}. ${restriccionesTexto}. Responde en español, práctico y específico.`,
+          systemPrompt,
           messages: chatMessages.concat([{ role: 'user', content: userMessage }])
         })
       });
+      
       const result = await response.json();
-      setChatMessages(prev => [...prev, { role: 'assistant', content: result.content[0].text }]);
+      
+      if (result.error) {
+        setChatMessages(prev => [...prev, { role: 'assistant', content: `Error: ${result.error}` }]);
+      } else {
+        setChatMessages(prev => [...prev, { role: 'assistant', content: result.content }]);
+      }
     } catch (err) {
-      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Error. Intenta de nuevo.' }]);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Error de conexión. Intenta de nuevo.' }]);
     } finally {
       setIsChatting(false);
     }
