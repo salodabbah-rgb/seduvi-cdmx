@@ -1403,7 +1403,7 @@ INSTRUCCIONES:
     }
   };
 
-  const showCenteredSearch = !selectedProperty && searchResults.length === 0 && viewMode === 'search';
+  const showCenteredSearch = !selectedProperty && viewMode === 'search';
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -1465,7 +1465,7 @@ INSTRUCCIONES:
         </div>
       </header>
 
-      <main className={`max-w-4xl mx-auto px-4 ${showCenteredSearch ? 'pt-[20vh]' : 'pt-20'}`}>
+      <main className={`max-w-4xl mx-auto px-4 ${showCenteredSearch && searchResults.length === 0 ? 'pt-[15vh]' : 'pt-20'}`}>
         {!selectedProperty ? (
           <div className="space-y-6">
             {/* Bookmarks View */}
@@ -1516,125 +1516,123 @@ INSTRUCCIONES:
 
             {/* Search View */}
             {viewMode === 'search' && (
-              <>
-            {/* Logo & Search - Centered Google Style */}
-            <div className={`${showCenteredSearch ? 'text-center mb-8' : ''}`}>
-              {showCenteredSearch && (
-                <div className="mb-8">
-                  <h1 className="text-6xl font-bold mb-2">
-                    <span className="text-gob-primary">G</span>
-                    <span className="text-slate-700">I</span>
-                    <span className="text-gob-primary">T</span>
-                    <span className="text-slate-700">O</span>
-                  </h1>
-                  <p className="text-slate-500 text-sm">Gestión Inteligente de Terrenos y Obras</p>
-                </div>
-              )}
-              
-              {/* Search Box */}
-              {stats.totalPredios > 0 && (
-                <div className={`${showCenteredSearch ? 'max-w-xl mx-auto' : ''}`}>
-                  <div className="bg-white rounded-full shadow-lg border border-slate-200 hover:shadow-xl transition-shadow flex items-center px-5 py-3">
-                    <span className="text-slate-400 mr-3">🔍</span>
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                      placeholder="Buscar dirección: Durango 259, Roma Norte..."
-                      className="flex-1 outline-none text-slate-700 bg-transparent"
-                    />
-                    {searchQuery && (
-                      <button 
-                        onClick={() => setSearchQuery('')} 
-                        className="text-slate-400 hover:text-slate-600 mr-3"
-                      >
-                        ✕
-                      </button>
-                    )}
-                    <button
-                      onClick={handleSearch}
-                      disabled={isLoading}
-                      className="bg-gob-primary hover:bg-gob-dark disabled:bg-slate-300 text-white px-5 py-2 rounded-full font-medium text-sm transition-colors"
-                    >
-                      {isLoading ? '...' : 'Buscar'}
-                    </button>
+              <div className="text-center">
+                {/* Logo - Always visible */}
+                {stats.totalPredios > 0 && (
+                  <div className="mb-8">
+                    <h1 className="text-6xl font-bold mb-2">
+                      <span className="text-gob-primary">G</span>
+                      <span className="text-slate-700">I</span>
+                      <span className="text-gob-primary">T</span>
+                      <span className="text-slate-700">O</span>
+                    </h1>
+                    <p className="text-slate-500 text-sm">Gestión Inteligente de Terrenos y Obras</p>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              
+                {/* Search Box - Always centered */}
+                {stats.totalPredios > 0 && (
+                  <div className="max-w-xl mx-auto mb-6">
+                    <div className="bg-white rounded-full shadow-lg border border-slate-200 hover:shadow-xl transition-shadow flex items-center px-5 py-3">
+                      <span className="text-slate-400 mr-3">🔍</span>
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                        placeholder="Buscar dirección: Durango 259, Roma Norte..."
+                        className="flex-1 outline-none text-slate-700 bg-transparent"
+                      />
+                      {searchQuery && (
+                        <button 
+                          onClick={() => setSearchQuery('')} 
+                          className="text-slate-400 hover:text-slate-600 mr-3"
+                        >
+                          ✕
+                        </button>
+                      )}
+                      <button
+                        onClick={handleSearch}
+                        disabled={isLoading}
+                        className="bg-gob-primary hover:bg-gob-dark disabled:bg-slate-300 text-white px-5 py-2 rounded-full font-medium text-sm transition-colors"
+                      >
+                        {isLoading ? '...' : 'Buscar'}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-            {/* History - Only when centered */}
-            {showCenteredSearch && searchHistory.length > 0 && (
-              <div className="max-w-xl mx-auto">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-sm text-slate-500">
-                    🕐 Búsquedas recientes
-                  </h3>
-                  <button onClick={clearHistory} className="text-xs text-slate-400 hover:text-red-500">Limpiar</button>
-                </div>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {searchHistory.slice(0, 8).map((h, i) => (
-                    <button
-                      key={i}
-                      onClick={() => { setSearchQuery(h.query); }}
-                      className="px-4 py-2 bg-white hover:bg-slate-100 rounded-full text-sm text-slate-600 shadow-sm border border-slate-200 transition-colors"
-                    >
-                      {h.query}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+                {/* History - Show when no results */}
+                {searchResults.length === 0 && searchHistory.length > 0 && (
+                  <div className="max-w-xl mx-auto mb-6">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-sm text-slate-500">
+                        🕐 Búsquedas recientes
+                      </h3>
+                      <button onClick={clearHistory} className="text-xs text-slate-400 hover:text-red-500">Limpiar</button>
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {searchHistory.slice(0, 8).map((h, i) => (
+                        <button
+                          key={i}
+                          onClick={() => { setSearchQuery(h.query); }}
+                          className="px-4 py-2 bg-white hover:bg-slate-100 rounded-full text-sm text-slate-600 shadow-sm border border-slate-200 transition-colors"
+                        >
+                          {h.query}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-            {/* Results */}
-            {searchResults.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div className="bg-slate-50 px-5 py-3 border-b flex justify-between items-center">
-                  <span className="font-medium text-slate-700">{searchResults.length} resultados encontrados</span>
-                  <button onClick={() => setSearchResults([])} className="text-sm text-slate-400 hover:text-slate-600">✕ Cerrar</button>
-                </div>
-                <div className="divide-y max-h-[60vh] overflow-y-auto">
-                  {searchResults.map((row) => (
-                    <button
-                      key={row.id}
-                      onClick={() => setSelectedProperty(row)}
-                      className="w-full text-left px-5 py-4 hover:bg-slate-50 transition-colors"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="font-semibold text-slate-800">{row.calle} {row.no_externo}</div>
-                          <div className="text-sm text-slate-500">{row.colonia} • {row.uso_descri}</div>
-                        </div>
-                        <span className="text-gob-primary text-sm font-medium">Ver →</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+                {/* Results */}
+                {searchResults.length > 0 && (
+                  <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden text-left">
+                    <div className="bg-slate-50 px-5 py-3 border-b flex justify-between items-center">
+                      <span className="font-medium text-slate-700">{searchResults.length} resultados encontrados</span>
+                      <button onClick={() => setSearchResults([])} className="text-sm text-slate-400 hover:text-slate-600">✕ Cerrar</button>
+                    </div>
+                    <div className="divide-y max-h-[50vh] overflow-y-auto">
+                      {searchResults.map((row) => (
+                        <button
+                          key={row.id}
+                          onClick={() => setSelectedProperty(row)}
+                          className="w-full text-left px-5 py-4 hover:bg-slate-50 transition-colors"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-semibold text-slate-800">{row.calle} {row.no_externo}</div>
+                              <div className="text-sm text-slate-500">{row.colonia} • {row.uso_descri}</div>
+                            </div>
+                            <span className="text-gob-primary text-sm font-medium">Ver →</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-            {/* Empty State */}
-            {stats.totalPredios === 0 && (
-              <div className="text-center py-12">
-                <div className="mb-8">
-                  <h1 className="text-6xl font-bold mb-2">
-                    <span className="text-gob-primary">G</span>
-                    <span className="text-slate-700">I</span>
-                    <span className="text-gob-primary">T</span>
-                    <span className="text-slate-700">O</span>
-                  </h1>
-                  <p className="text-slate-500 text-sm">Gestión Inteligente de Terrenos y Obras</p>
-                </div>
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 max-w-md mx-auto">
-                  <p className="text-amber-800 font-medium mb-2">⚠️ Base de datos vacía</p>
-                  <p className="text-amber-700 text-sm">
-                    Contacta al administrador para cargar los datos de SEDUVI.
-                  </p>
-                </div>
+                {/* Empty State - No data loaded */}
+                {stats.totalPredios === 0 && (
+                  <div className="py-12">
+                    <div className="mb-8">
+                      <h1 className="text-6xl font-bold mb-2">
+                        <span className="text-gob-primary">G</span>
+                        <span className="text-slate-700">I</span>
+                        <span className="text-gob-primary">T</span>
+                        <span className="text-slate-700">O</span>
+                      </h1>
+                      <p className="text-slate-500 text-sm">Gestión Inteligente de Terrenos y Obras</p>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 max-w-md mx-auto">
+                      <p className="text-amber-800 font-medium mb-2">⚠️ Base de datos vacía</p>
+                      <p className="text-amber-700 text-sm">
+                        Contacta al administrador para cargar los datos de SEDUVI.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-              </>
             )}
           </div>
         ) : (
