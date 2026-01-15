@@ -159,9 +159,9 @@ const PropertyCard = ({ property }) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-white font-bold">🏛️ CDMX</span>
-            <span className="text-rose-200 text-sm">Normatividad de Uso de Suelo</span>
+            <span className="text-lime-200 text-sm">Normatividad de Uso de Suelo</span>
           </div>
-          <span className="text-rose-200 text-xs">{new Date().toLocaleDateString('es-MX')}</span>
+          <span className="text-lime-200 text-xs">{new Date().toLocaleDateString('es-MX')}</span>
         </div>
       </div>
 
@@ -262,6 +262,40 @@ const PropertyCard = ({ property }) => {
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        {/* Normas de Ordenación */}
+        <div>
+          <h3 className="text-gob-primary font-bold text-sm border-b-2 border-gob-primary pb-1 mb-2">
+            📋 Normas de Ordenación
+          </h3>
+          <div className="bg-slate-50 rounded-lg p-3 text-sm space-y-3">
+            <div>
+              <div className="font-semibold text-slate-700 mb-1">Altura máxima:</div>
+              <div className="text-slate-600">{property.altura || `${niveles} niveles o ${niveles * 3.6}m`}</div>
+            </div>
+            <div>
+              <div className="font-semibold text-slate-700 mb-1">Área libre mínima:</div>
+              <div className="text-slate-600">{property.area_libre || '20'}% de la superficie del predio</div>
+            </div>
+            <div>
+              <div className="font-semibold text-slate-700 mb-1">Vivienda mínima:</div>
+              <div className="text-slate-600">{property.minimo_viv || 'No especificado'}</div>
+            </div>
+            <div>
+              <div className="font-semibold text-slate-700 mb-1">Densidad:</div>
+              <div className="text-slate-600">{property.densidad_d || '1 vivienda por cada 50m² de terreno'}</div>
+            </div>
+            {(property.uso_descri || '').toUpperCase().includes('HABITACIONAL') && (
+              <div className="bg-green-50 border border-green-200 rounded p-2">
+                <div className="font-semibold text-green-800 mb-1">✓ Usos permitidos (Habitacional Mixto):</div>
+                <div className="text-green-700 text-xs">
+                  Vivienda unifamiliar y plurifamiliar, comercio básico (tiendas, farmacias), 
+                  servicios básicos (consultorios, oficinas), equipamiento vecinal
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -506,7 +540,7 @@ export default function App() {
             <span className="text-2xl">🏛️</span>
             <div>
               <h1 className="text-white font-bold">SEDUVI CDMX</h1>
-              <p className="text-rose-200 text-xs">
+              <p className="text-lime-200 text-xs">
                 {stats.totalPredios > 0 
                   ? `${stats.totalPredios.toLocaleString()} predios en ${stats.alcaldias.length} alcaldía(s)`
                   : 'Sin datos cargados'}
@@ -515,7 +549,7 @@ export default function App() {
           </div>
           
           {selectedProperty && (
-            <button onClick={() => setSelectedProperty(null)} className="text-rose-200 hover:text-white text-sm">
+            <button onClick={() => setSelectedProperty(null)} className="text-lime-200 hover:text-white text-sm">
               ← Volver
             </button>
           )}

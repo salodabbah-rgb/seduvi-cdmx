@@ -7,8 +7,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        'gob-primary': '#9d2449',
-        'gob-dark': '#621132'
+        'gob-primary': '#556B2F',
+        'gob-dark': '#3d4d22'
       }
     },
   },
