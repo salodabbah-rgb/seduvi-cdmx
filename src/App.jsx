@@ -1459,9 +1459,8 @@ INSTRUCCIONES:
                 ✕
               </button>
             </div>
-          ) : (
-            <div ref={googleButtonRef} className="google-signin-btn" />
-          )}
+          ) : null}
+          <div ref={googleButtonRef} className={`google-signin-btn ${user ? 'hidden' : ''}`} />
         </div>
       </header>
 
