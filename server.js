@@ -141,6 +141,18 @@ async function initDatabase() {
       ALTER TABLE search_history ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
     `).catch(() => {});
     
+    // Bookmarks table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS bookmarks (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        predio_id INTEGER REFERENCES predios(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, predio_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_bookmarks_user ON bookmarks(user_id);
+    `);
+    
     console.log('✅ Database initialized successfully');
   } catch (err) {
     console.error('❌ Database initialization error:', err);
@@ -367,6 +379,86 @@ app.delete('/api/history', async (req, res) => {
   } catch (err) {
     console.error('Clear history error:', err);
     res.status(500).json({ error: 'Error clearing history' });
+  }
+});
+
+// =============================================================================
+// BOOKMARKS API
+// =============================================================================
+
+// Get user's bookmarks
+app.get('/api/bookmarks', async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Login required' });
+  }
+  
+  try {
+    const result = await pool.query(`
+      SELECT p.*, b.created_at as bookmarked_at
+      FROM bookmarks b
+      JOIN predios p ON b.predio_id = p.id
+      WHERE b.user_id = $1
+      ORDER BY b.created_at DESC
+    `, [req.user.id]);
+    
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Get bookmarks error:', err);
+    res.status(500).json({ error: 'Error fetching bookmarks' });
+  }
+});
+
+// Add bookmark
+app.post('/api/bookmarks/:predioId', async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Login required' });
+  }
+  
+  try {
+    await pool.query(
+      'INSERT INTO bookmarks (user_id, predio_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [req.user.id, req.params.predioId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Add bookmark error:', err);
+    res.status(500).json({ error: 'Error adding bookmark' });
+  }
+});
+
+// Remove bookmark
+app.delete('/api/bookmarks/:predioId', async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Login required' });
+  }
+  
+  try {
+    await pool.query(
+      'DELETE FROM bookmarks WHERE user_id = $1 AND predio_id = $2',
+      [req.user.id, req.params.predioId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Remove bookmark error:', err);
+    res.status(500).json({ error: 'Error removing bookmark' });
+  }
+});
+
+// Check if predio is bookmarked
+app.get('/api/bookmarks/check/:predioId', async (req, res) => {
+  if (!req.user) {
+    return res.json({ bookmarked: false });
+  }
+  
+  try {
+    const result = await pool.query(
+      'SELECT 1 FROM bookmarks WHERE user_id = $1 AND predio_id = $2',
+      [req.user.id, req.params.predioId]
+    );
+    res.json({ bookmarked: result.rows.length > 0 });
+  } catch (err) {
+    console.error('Check bookmark error:', err);
+    res.status(500).json({ error: 'Error checking bookmark' });
   }
 });
 
