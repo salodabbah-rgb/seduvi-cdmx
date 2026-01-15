@@ -136,6 +136,72 @@ const PDDU_CUAUHTEMOC = {
 };
 
 // =============================================================================
+// PDDU BENITO JUÁREZ - NÁPOLES (Gaceta 27 Agosto 2002)
+// =============================================================================
+
+const PDDU_NAPOLES = {
+  colonias: ['NAPOLES', 'NÁPOLES', 'AMPLIACION NAPOLES', 'AMPLIACIÓN NÁPOLES', 
+             'NOCHEBUENA', 'CIUDAD DE LOS DEPORTES'],
+  nombre: 'PPDU Nápoles, Ampliación Nápoles, Nochebuena y Ciudad de los Deportes',
+  fecha: '27 de agosto de 2002',
+  
+  // Restricciones generales del programa parcial
+  restriccionesGenerales: {
+    titulo: 'Restricciones PPDU Nápoles (Benito Juárez)',
+    prohibidos: [
+      'Nuevas gasolineras (las existentes reguladas por PEMEX)',
+      'Antenas parabólicas >3m en zonas H (especialmente Nochebuena y Nápoles)',
+      'Obras de infraestructura aéreas visibles desde vía pública',
+      'Afectación de vialidades por particulares'
+    ],
+    requisitos: [
+      'En zona H: máximo 3 niveles (vivienda unifamiliar)',
+      'En zona HC: comercio SOLO en planta baja, máximo 6 niveles',
+      'En zona HM/11: solo acera poniente de Insurgentes',
+      'Edificios >5 niveles: restricción posterior 15% altura (mín 4m)'
+    ]
+  },
+  
+  // Subdivisión mínima por zonificación
+  subdivisionMinima: {
+    'H': 250,
+    'HC': 250,
+    'HM': 750,
+    'HO': 750,
+    'CB': 250,
+    'E': 750
+  },
+  
+  // Norma para impulsar vivienda en zona H
+  incentivosVivienda: {
+    titulo: 'Incentivo Vivienda zona H',
+    descripcion: 'Se autorizan hasta 2 niveles adicionales para proyectos de vivienda',
+    condiciones: [
+      'Cumplir +20% estacionamiento sobre reglamento',
+      'Respetar área libre según superficie del predio'
+    ],
+    tabla: [
+      { superficie: 'Hasta 250 m²', niveles: 'Según plano', areaLibre: '30%' },
+      { superficie: '250-500 m²', niveles: '4 niveles', areaLibre: '30%' },
+      { superficie: '500-750 m²', niveles: '5 niveles', areaLibre: '30%' },
+      { superficie: '750-1000 m²', niveles: '6 niveles', areaLibre: '35%' }
+    ]
+  },
+  
+  // Vialidades con +20% estacionamiento
+  vialidadesEspeciales: [
+    'Manzana del W.T.C. (Av. del Parque, Altadena, Chicago)',
+    'Viaducto Miguel Alemán (Nueva York a Insurgentes)',
+    'Av. Nueva York (Dakota a Viaducto Río Becerra)',
+    'Av. Dakota (Nueva York a Viaducto Río Becerra)',
+    'Av. Augusto Rodin (Holbein a Viaducto Río Becerra)'
+  ],
+  
+  // Patrimonio artístico
+  patrimonioArtistico: ['Poliforum Cultural Siqueiros (Insurgentes esq. Filadelfia)']
+};
+
+// =============================================================================
 // NORMAS DE ORDENACIÓN COMPLETAS (PGDU/PDDU)
 // =============================================================================
 
@@ -347,6 +413,25 @@ const getRestricciones = (property) => {
     }
     if (colonia.includes('ROMA NORTE') && zonificacion.includes('HABITACIONAL')) {
       restricciones.push({ tipo: 'NOTA 6', ...PDDU_CUAUHTEMOC.nota6, aplica: true });
+    }
+  }
+  
+  // Check Benito Juárez - Nápoles PPDU
+  if (alcaldia.includes('BENITO JUAREZ') || alcaldia.includes('BENITO JUÁREZ')) {
+    const isNapolesZone = PDDU_NAPOLES.colonias.some(c => 
+      coloniaClean.includes(c.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase())
+    );
+    
+    if (isNapolesZone) {
+      restricciones.push({ 
+        tipo: 'PPDU_NAPOLES', 
+        titulo: PDDU_NAPOLES.restriccionesGenerales.titulo,
+        prohibidos: PDDU_NAPOLES.restriccionesGenerales.prohibidos,
+        requisitos: PDDU_NAPOLES.restriccionesGenerales.requisitos,
+        programa: PDDU_NAPOLES.nombre,
+        fecha: PDDU_NAPOLES.fecha,
+        aplica: true 
+      });
     }
   }
   
@@ -795,7 +880,34 @@ const PropertyCard = ({ property }) => {
               </div>
             ))}
             
-            {restricciones.filter(r => r.tipo !== 'ACP').map((r, i) => (
+            {/* PPDU Nápoles restrictions */}
+            {restricciones.filter(r => r.tipo === 'PPDU_NAPOLES').map((r, i) => (
+              <div key={i} className="bg-purple-50 border-2 border-purple-300 rounded-lg p-4">
+                <h3 className="text-purple-800 font-bold text-sm mb-2">📋 {r.titulo}</h3>
+                <p className="text-xs text-purple-600 mb-2">{r.programa} ({r.fecha})</p>
+                
+                {r.prohibidos && r.prohibidos.length > 0 && (
+                  <div className="text-xs text-red-700 mb-3">
+                    <div className="font-semibold mb-1">🚫 Prohibiciones:</div>
+                    <ul className="space-y-1">
+                      {r.prohibidos.map((p, j) => <li key={j}>❌ {p}</li>)}
+                    </ul>
+                  </div>
+                )}
+                
+                {r.requisitos && r.requisitos.length > 0 && (
+                  <div className="text-xs text-purple-700">
+                    <div className="font-semibold mb-1">📌 Requisitos por zonificación:</div>
+                    <ul className="space-y-1">
+                      {r.requisitos.map((req, j) => <li key={j}>• {req}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            {/* Other restrictions (Nota 5, Nota 6) */}
+            {restricciones.filter(r => r.tipo !== 'ACP' && r.tipo !== 'PPDU_NAPOLES').map((r, i) => (
               <div key={i} className="bg-red-50 border-2 border-red-300 rounded-lg p-4">
                 <h3 className="text-red-800 font-bold text-sm mb-2">⚠️ {r.titulo}</h3>
                 {r.excepcion && (
