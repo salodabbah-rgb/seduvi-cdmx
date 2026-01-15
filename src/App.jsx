@@ -99,6 +99,191 @@ const PDDU_CUAUHTEMOC = {
 };
 
 // =============================================================================
+// NORMAS DE ORDENACIÓN COMPLETAS (PGDU/PDDU)
+// =============================================================================
+
+const NORMAS_ORDENACION = {
+  1: {
+    titulo: 'Coeficiente de Ocupación del Suelo (COS) y Coeficiente de Utilización del Suelo (CUS)',
+    descripcion: 'Determinan la superficie máxima de desplante y construcción total permitida en un predio.',
+    aplicacion: 'Aplica a TODOS los predios en cualquier zonificación.',
+    formulas: [
+      'COS = Superficie de Desplante / Superficie del Terreno',
+      'CUS = Superficie Total Construida / Superficie del Terreno',
+      'COS máximo = (100% - % Área Libre) / 100',
+      'CUS máximo = COS × Número de Niveles'
+    ],
+    ejemplo: 'Terreno de 500m² con 20% área libre y 4 niveles: COS = 0.80, CUS = 3.20, Desplante máx = 400m², Construcción máx = 1,600m²',
+    importante: 'El CUS incluye TODAS las áreas techadas: habitables, circulaciones, estacionamientos techados, cuartos de servicio, etc.'
+  },
+  4: {
+    titulo: 'Área Libre de Construcción y Recarga de Aguas Pluviales',
+    descripcion: 'Establece el porcentaje mínimo del terreno que debe permanecer sin construcción para permitir la infiltración de agua pluvial.',
+    aplicacion: 'Aplica a TODOS los predios. En Áreas de Conservación Patrimonial tiene requisitos adicionales.',
+    formulas: [
+      'Área Libre mínima = Superficie Terreno × (% Área Libre / 100)',
+      'El área libre debe ser a cielo abierto y permeable',
+      'En sótanos: el área libre debe mantenerse sin construcción subterránea para permitir infiltración'
+    ],
+    ejemplo: 'Terreno de 500m² con 30% área libre: mínimo 150m² deben quedar sin construir.',
+    importante: 'En Áreas de Conservación Patrimonial (ACP), el área libre debe contribuir a mantener la imagen urbana y puede tener restricciones adicionales de jardinería o tratamiento.'
+  },
+  7: {
+    titulo: 'Alturas de Edificación y Restricciones en Colindancia Posterior',
+    descripcion: 'Define la altura máxima permitida y las restricciones de construcción en la parte posterior del predio.',
+    aplicacion: 'Aplica a TODOS los predios con construcciones de más de un nivel.',
+    formulas: [
+      'Altura máxima = Número de Niveles × 3.60 metros',
+      'Se permite adicionar hasta 3.50m para instalaciones (tinacos, cuarto de máquinas)',
+      'Restricción posterior = según tabla de niveles'
+    ],
+    tablaRestricciones: {
+      '1-2 niveles': '3.00m de restricción posterior',
+      '3 niveles': '4.00m de restricción posterior', 
+      '4 niveles': '5.00m de restricción posterior',
+      '5 niveles': '6.00m de restricción posterior',
+      '6+ niveles': '6.00m + 1.00m por cada nivel adicional'
+    },
+    ejemplo: 'Edificio de 5 niveles: altura máx = 18m (+3.5m instalaciones = 21.5m total), restricción posterior = 6m',
+    importante: 'En colindancia con predios de menor altura, se debe escalonar la construcción para no afectar iluminación natural.'
+  },
+  8: {
+    titulo: 'Instalaciones Permitidas por Encima del Número de Niveles',
+    descripcion: 'Regula qué construcciones pueden ubicarse por encima de la altura máxima permitida.',
+    aplicacion: 'Aplica a azoteas y cubiertas de edificaciones.',
+    permitido: [
+      'Tinacos y equipos de bombeo (hasta 3.50m adicionales)',
+      'Cuartos de máquinas y elevadores',
+      'Antenas y equipos de telecomunicaciones',
+      'Instalaciones de aire acondicionado',
+      'Calentadores solares y paneles fotovoltaicos',
+      'Áreas de tendido (techadas o descubiertas)'
+    ],
+    restricciones: [
+      'Deben remeterse del paramento de fachada',
+      'En ACP: remeterse mínimo 3.00m del alineamiento y ocultarse',
+      'No pueden ser habitables',
+      'Altura máxima adicional: 3.50m sobre último nivel'
+    ],
+    importante: 'Los roof gardens y terrazas habitables SÍ cuentan como nivel si están techados más del 50%.'
+  },
+  9: {
+    titulo: 'Subdivisión de Predios',
+    descripcion: 'Establece las condiciones para dividir un predio en dos o más lotes.',
+    aplicacion: 'Aplica cuando se desea fraccionar un terreno.',
+    requisitos: [
+      'Lote mínimo resultante según zonificación (generalmente 90-250m²)',
+      'Frente mínimo según zonificación (generalmente 6-8m)',
+      'Cada lote resultante debe tener acceso a vía pública',
+      'Respetar la zonificación predominante de la zona'
+    ],
+    ejemplo: 'En zona H-4/20: lote mínimo = 250m², frente mínimo = 8m.',
+    importante: 'En Áreas de Conservación Patrimonial, la subdivisión puede estar restringida si afecta la imagen urbana.'
+  },
+  10: {
+    titulo: 'Fusión de Predios',
+    descripcion: 'Establece las condiciones para unir dos o más predios contiguos.',
+    aplicacion: 'Aplica cuando se desea integrar varios lotes.',
+    requisitos: [
+      'Los predios deben ser colindantes',
+      'El predio resultante adopta la zonificación predominante',
+      'Si tienen diferentes zonificaciones, prevalece la menos intensiva'
+    ],
+    importante: 'La fusión no cambia automáticamente la zonificación ni permite mayor intensidad de construcción.'
+  },
+  11: {
+    titulo: 'Cálculo del Número de Viviendas Permitidas',
+    descripcion: 'Determina la cantidad máxima de unidades de vivienda que pueden construirse en un predio según su densidad.',
+    aplicacion: 'Aplica a TODOS los desarrollos habitacionales.',
+    formulas: [
+      'Número de viviendas = Superficie del Terreno ÷ M² por vivienda (según densidad)',
+      'Densidades comunes:',
+      '  - 1 viv/100m² = Densidad muy baja',
+      '  - 1 viv/50m² = Densidad baja (más común)',
+      '  - 1 viv/33m² = Densidad media',
+      '  - 1 viv/25m² = Densidad alta'
+    ],
+    ejemplo: 'Terreno de 400m² con densidad "1 viv c/50m²": máximo 8 viviendas permitidas.',
+    importante: 'El número de viviendas es independiente del CUS. Puedes tener más m² construidos pero NO más viviendas que las permitidas por densidad.'
+  },
+  13: {
+    titulo: 'Locales con Uso Distinto al Habitacional en Zonificación H',
+    descripcion: 'Permite ciertos usos no habitacionales en planta baja de zonas habitacionales puras.',
+    aplicacion: 'Aplica SOLO a zonificación H (Habitacional puro), NO a HM ni HC.',
+    usosPermitidos: [
+      'Comercio básico de hasta 50m² en planta baja',
+      'Consultorios y oficinas de hasta 100m²',
+      'Solo en vialidades principales o esquinas'
+    ],
+    importante: 'En HM (Habitacional Mixto) y HC (Habitacional con Comercio), los usos comerciales ya están contemplados en la zonificación.'
+  },
+  17: {
+    titulo: 'Vía Pública y Estacionamientos Subterráneos',
+    descripcion: 'Regula el uso del subsuelo de la vía pública para estacionamientos.',
+    aplicacion: 'Aplica a proyectos que requieren estacionamiento bajo banqueta o arroyo vehicular.',
+    requisitos: [
+      'Autorización especial de SEDUVI y Autoridad del Espacio Público',
+      'Estudio de factibilidad técnica',
+      'No afectar infraestructura subterránea'
+    ],
+    importante: 'Generalmente solo se autoriza en proyectos de gran escala. Para proyectos privados es muy difícil obtener esta autorización.'
+  },
+  18: {
+    titulo: 'Ampliación de Construcciones Existentes',
+    descripcion: 'Regula las condiciones para ampliar edificaciones que ya existen.',
+    aplicacion: 'Aplica a inmuebles existentes que buscan crecer.',
+    condiciones: [
+      'La ampliación debe respetar la zonificación vigente',
+      'No puede exceder el COS ni CUS permitidos',
+      'Debe cumplir con el Reglamento de Construcciones vigente',
+      'En ACP: requiere dictamen de Patrimonio Cultural Urbano'
+    ],
+    tiposObra: {
+      'Tipo A': 'Ampliación hasta 200m² sin cambio estructural - Sin DRO',
+      'Tipo B': 'Ampliación >200m² o con cambio estructural - Requiere DRO',
+      'Tipo C': 'Ampliación >5,000m² o >5 niveles - DRO + Corresponsables'
+    },
+    importante: 'Si la construcción existente no cumple con la normatividad actual, la ampliación puede requerir regularización previa.'
+  },
+  19: {
+    titulo: 'Estudio de Impacto Urbano',
+    descripcion: 'Establece cuándo es obligatorio presentar un estudio que evalúe los efectos de un proyecto en su entorno.',
+    aplicacion: 'Aplica a proyectos de gran escala o alto impacto.',
+    obligatorio: [
+      'Proyectos >5,000m² de construcción',
+      'Edificios >5 niveles de altura',
+      'Proyectos en Áreas de Conservación Patrimonial mayores a cierto umbral',
+      'Usos de alto impacto (hospitales, centros comerciales)',
+      'Desarrollos habitacionales >50 viviendas'
+    ],
+    contenido: [
+      'Análisis de vialidad y transporte',
+      'Estudio de demanda de servicios',
+      'Impacto en imagen urbana',
+      'Medidas de mitigación propuestas'
+    ],
+    importante: 'El dictamen de impacto urbano puede condicionar o negar el proyecto si los impactos no son mitigables.'
+  },
+  26: {
+    titulo: 'Norma para Incentivar la Producción de Vivienda Sustentable',
+    descripcion: 'Otorga beneficios a proyectos que incorporan criterios de sustentabilidad.',
+    aplicacion: 'Aplica a proyectos habitacionales que cumplan criterios sustentables.',
+    beneficios: [
+      'Incremento de hasta 35% en el número de viviendas permitidas',
+      'Reducción en requerimientos de estacionamiento',
+      'Posible reducción en área libre (con compensación ecológica)'
+    ],
+    requisitos: [
+      'Sistemas de captación de agua pluvial',
+      'Calentadores solares o ahorradores de energía',
+      'Materiales sustentables en construcción',
+      'Naturación de azoteas o áreas verdes'
+    ],
+    importante: 'Los beneficios varían según el nivel de sustentabilidad alcanzado. Requiere dictamen técnico específico.'
+  }
+};
+
+// =============================================================================
 // GET RESTRICTIONS FOR A PROPERTY
 // =============================================================================
 
@@ -265,39 +450,285 @@ const PropertyCard = ({ property }) => {
           </div>
         </div>
 
-        {/* Normas de Ordenación */}
-        <div>
-          <h3 className="text-gob-primary font-bold text-sm border-b-2 border-gob-primary pb-1 mb-2">
-            📋 Normas de Ordenación
-          </h3>
-          <div className="bg-slate-50 rounded-lg p-3 text-sm space-y-3">
-            <div>
-              <div className="font-semibold text-slate-700 mb-1">Altura máxima:</div>
-              <div className="text-slate-600">{property.altura || `${niveles} niveles o ${niveles * 3.6}m`}</div>
-            </div>
-            <div>
-              <div className="font-semibold text-slate-700 mb-1">Área libre mínima:</div>
-              <div className="text-slate-600">{property.area_libre || '20'}% de la superficie del predio</div>
-            </div>
-            <div>
-              <div className="font-semibold text-slate-700 mb-1">Vivienda mínima:</div>
-              <div className="text-slate-600">{property.minimo_viv || 'No especificado'}</div>
-            </div>
-            <div>
-              <div className="font-semibold text-slate-700 mb-1">Densidad:</div>
-              <div className="text-slate-600">{property.densidad_d || '1 vivienda por cada 50m² de terreno'}</div>
-            </div>
-            {(property.uso_descri || '').toUpperCase().includes('HABITACIONAL') && (
-              <div className="bg-green-50 border border-green-200 rounded p-2">
-                <div className="font-semibold text-green-800 mb-1">✓ Usos permitidos (Habitacional Mixto):</div>
-                <div className="text-green-700 text-xs">
-                  Vivienda unifamiliar y plurifamiliar, comercio básico (tiendas, farmacias), 
-                  servicios básicos (consultorios, oficinas), equipamiento vecinal
+        {/* Normas de Ordenación Aplicables - EXPANDABLE */}
+        <details className="group" open>
+          <summary className="text-gob-primary font-bold text-sm border-b-2 border-gob-primary pb-1 mb-2 cursor-pointer list-none flex justify-between items-center">
+            📜 Normas de Ordenación Aplicables
+            <span className="text-xs group-open:rotate-180 transition-transform">▼</span>
+          </summary>
+          
+          <div className="space-y-3 mt-3">
+            {/* Norma 1 - COS y CUS */}
+            <details className="bg-slate-50 rounded-lg overflow-hidden">
+              <summary className="bg-slate-100 px-3 py-2 cursor-pointer font-semibold text-sm text-slate-700 flex justify-between">
+                <span>Norma 1: {NORMAS_ORDENACION[1].titulo}</span>
+                <span className="text-slate-400">▼</span>
+              </summary>
+              <div className="p-3 text-xs space-y-2">
+                <p className="text-slate-600">{NORMAS_ORDENACION[1].descripcion}</p>
+                <div className="bg-blue-50 rounded p-2">
+                  <div className="font-semibold text-blue-800 mb-1">📐 Fórmulas:</div>
+                  <ul className="text-blue-700 space-y-0.5">
+                    {NORMAS_ORDENACION[1].formulas.map((f, i) => (
+                      <li key={i} className="font-mono text-xs">{f}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-green-50 rounded p-2">
+                  <div className="font-semibold text-green-800">💡 Ejemplo:</div>
+                  <p className="text-green-700">{NORMAS_ORDENACION[1].ejemplo}</p>
+                </div>
+                <div className="bg-amber-50 rounded p-2">
+                  <div className="font-semibold text-amber-800">⚠️ Importante:</div>
+                  <p className="text-amber-700">{NORMAS_ORDENACION[1].importante}</p>
                 </div>
               </div>
-            )}
+            </details>
+
+            {/* Norma 4 - Área Libre */}
+            <details className="bg-slate-50 rounded-lg overflow-hidden">
+              <summary className="bg-slate-100 px-3 py-2 cursor-pointer font-semibold text-sm text-slate-700 flex justify-between">
+                <span>Norma 4: {NORMAS_ORDENACION[4].titulo}</span>
+                <span className="text-slate-400">▼</span>
+              </summary>
+              <div className="p-3 text-xs space-y-2">
+                <p className="text-slate-600">{NORMAS_ORDENACION[4].descripcion}</p>
+                <div className="bg-blue-50 rounded p-2">
+                  <div className="font-semibold text-blue-800 mb-1">📐 Fórmulas:</div>
+                  <ul className="text-blue-700 space-y-0.5">
+                    {NORMAS_ORDENACION[4].formulas.map((f, i) => (
+                      <li key={i}>{f}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-green-50 rounded p-2">
+                  <div className="font-semibold text-green-800">💡 Ejemplo:</div>
+                  <p className="text-green-700">{NORMAS_ORDENACION[4].ejemplo}</p>
+                </div>
+                <div className="bg-amber-50 rounded p-2">
+                  <div className="font-semibold text-amber-800">⚠️ Importante:</div>
+                  <p className="text-amber-700">{NORMAS_ORDENACION[4].importante}</p>
+                </div>
+              </div>
+            </details>
+
+            {/* Norma 7 - Alturas */}
+            <details className="bg-slate-50 rounded-lg overflow-hidden">
+              <summary className="bg-slate-100 px-3 py-2 cursor-pointer font-semibold text-sm text-slate-700 flex justify-between">
+                <span>Norma 7: {NORMAS_ORDENACION[7].titulo}</span>
+                <span className="text-slate-400">▼</span>
+              </summary>
+              <div className="p-3 text-xs space-y-2">
+                <p className="text-slate-600">{NORMAS_ORDENACION[7].descripcion}</p>
+                <div className="bg-blue-50 rounded p-2">
+                  <div className="font-semibold text-blue-800 mb-1">📐 Fórmulas:</div>
+                  <ul className="text-blue-700 space-y-0.5">
+                    {NORMAS_ORDENACION[7].formulas.map((f, i) => (
+                      <li key={i}>{f}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-purple-50 rounded p-2">
+                  <div className="font-semibold text-purple-800 mb-1">📏 Tabla de Restricciones Posteriores:</div>
+                  <div className="grid grid-cols-2 gap-1 text-purple-700">
+                    {Object.entries(NORMAS_ORDENACION[7].tablaRestricciones).map(([niveles, restriccion]) => (
+                      <div key={niveles} className="flex justify-between bg-white/50 px-2 py-1 rounded">
+                        <span>{niveles}:</span>
+                        <span className="font-semibold">{restriccion}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-green-50 rounded p-2">
+                  <div className="font-semibold text-green-800">💡 Ejemplo:</div>
+                  <p className="text-green-700">{NORMAS_ORDENACION[7].ejemplo}</p>
+                </div>
+              </div>
+            </details>
+
+            {/* Norma 8 - Instalaciones en Azotea */}
+            <details className="bg-slate-50 rounded-lg overflow-hidden">
+              <summary className="bg-slate-100 px-3 py-2 cursor-pointer font-semibold text-sm text-slate-700 flex justify-between">
+                <span>Norma 8: {NORMAS_ORDENACION[8].titulo}</span>
+                <span className="text-slate-400">▼</span>
+              </summary>
+              <div className="p-3 text-xs space-y-2">
+                <p className="text-slate-600">{NORMAS_ORDENACION[8].descripcion}</p>
+                <div className="bg-green-50 rounded p-2">
+                  <div className="font-semibold text-green-800 mb-1">✓ Permitido:</div>
+                  <ul className="text-green-700 space-y-0.5">
+                    {NORMAS_ORDENACION[8].permitido.map((p, i) => (
+                      <li key={i}>• {p}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-red-50 rounded p-2">
+                  <div className="font-semibold text-red-800 mb-1">⚠️ Restricciones:</div>
+                  <ul className="text-red-700 space-y-0.5">
+                    {NORMAS_ORDENACION[8].restricciones.map((r, i) => (
+                      <li key={i}>• {r}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-amber-50 rounded p-2">
+                  <div className="font-semibold text-amber-800">⚠️ Importante:</div>
+                  <p className="text-amber-700">{NORMAS_ORDENACION[8].importante}</p>
+                </div>
+              </div>
+            </details>
+
+            {/* Norma 11 - Número de Viviendas */}
+            <details className="bg-slate-50 rounded-lg overflow-hidden">
+              <summary className="bg-slate-100 px-3 py-2 cursor-pointer font-semibold text-sm text-slate-700 flex justify-between">
+                <span>Norma 11: {NORMAS_ORDENACION[11].titulo}</span>
+                <span className="text-slate-400">▼</span>
+              </summary>
+              <div className="p-3 text-xs space-y-2">
+                <p className="text-slate-600">{NORMAS_ORDENACION[11].descripcion}</p>
+                <div className="bg-blue-50 rounded p-2">
+                  <div className="font-semibold text-blue-800 mb-1">📐 Fórmulas:</div>
+                  <ul className="text-blue-700 space-y-0.5">
+                    {NORMAS_ORDENACION[11].formulas.map((f, i) => (
+                      <li key={i}>{f}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-green-50 rounded p-2">
+                  <div className="font-semibold text-green-800">💡 Ejemplo:</div>
+                  <p className="text-green-700">{NORMAS_ORDENACION[11].ejemplo}</p>
+                </div>
+                <div className="bg-amber-50 rounded p-2">
+                  <div className="font-semibold text-amber-800">⚠️ Importante:</div>
+                  <p className="text-amber-700">{NORMAS_ORDENACION[11].importante}</p>
+                </div>
+              </div>
+            </details>
+
+            {/* Norma 18 - Ampliaciones */}
+            <details className="bg-slate-50 rounded-lg overflow-hidden">
+              <summary className="bg-slate-100 px-3 py-2 cursor-pointer font-semibold text-sm text-slate-700 flex justify-between">
+                <span>Norma 18: {NORMAS_ORDENACION[18].titulo}</span>
+                <span className="text-slate-400">▼</span>
+              </summary>
+              <div className="p-3 text-xs space-y-2">
+                <p className="text-slate-600">{NORMAS_ORDENACION[18].descripcion}</p>
+                <div className="bg-blue-50 rounded p-2">
+                  <div className="font-semibold text-blue-800 mb-1">📋 Condiciones:</div>
+                  <ul className="text-blue-700 space-y-0.5">
+                    {NORMAS_ORDENACION[18].condiciones.map((c, i) => (
+                      <li key={i}>• {c}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-purple-50 rounded p-2">
+                  <div className="font-semibold text-purple-800 mb-1">🏗️ Tipos de Obra:</div>
+                  {Object.entries(NORMAS_ORDENACION[18].tiposObra).map(([tipo, desc]) => (
+                    <div key={tipo} className="flex gap-2 text-purple-700 mb-1">
+                      <span className="font-semibold">{tipo}:</span>
+                      <span>{desc}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-amber-50 rounded p-2">
+                  <div className="font-semibold text-amber-800">⚠️ Importante:</div>
+                  <p className="text-amber-700">{NORMAS_ORDENACION[18].importante}</p>
+                </div>
+              </div>
+            </details>
+
+            {/* Norma 19 - Impacto Urbano */}
+            <details className="bg-slate-50 rounded-lg overflow-hidden">
+              <summary className="bg-slate-100 px-3 py-2 cursor-pointer font-semibold text-sm text-slate-700 flex justify-between">
+                <span>Norma 19: {NORMAS_ORDENACION[19].titulo}</span>
+                <span className="text-slate-400">▼</span>
+              </summary>
+              <div className="p-3 text-xs space-y-2">
+                <p className="text-slate-600">{NORMAS_ORDENACION[19].descripcion}</p>
+                <div className="bg-red-50 rounded p-2">
+                  <div className="font-semibold text-red-800 mb-1">⚠️ Obligatorio cuando:</div>
+                  <ul className="text-red-700 space-y-0.5">
+                    {NORMAS_ORDENACION[19].obligatorio.map((o, i) => (
+                      <li key={i}>• {o}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-blue-50 rounded p-2">
+                  <div className="font-semibold text-blue-800 mb-1">📄 Contenido del Estudio:</div>
+                  <ul className="text-blue-700 space-y-0.5">
+                    {NORMAS_ORDENACION[19].contenido.map((c, i) => (
+                      <li key={i}>• {c}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-amber-50 rounded p-2">
+                  <div className="font-semibold text-amber-800">⚠️ Importante:</div>
+                  <p className="text-amber-700">{NORMAS_ORDENACION[19].importante}</p>
+                </div>
+              </div>
+            </details>
+
+            {/* Norma 26 - Vivienda Sustentable */}
+            <details className="bg-slate-50 rounded-lg overflow-hidden">
+              <summary className="bg-slate-100 px-3 py-2 cursor-pointer font-semibold text-sm text-slate-700 flex justify-between">
+                <span>Norma 26: {NORMAS_ORDENACION[26].titulo}</span>
+                <span className="text-slate-400">▼</span>
+              </summary>
+              <div className="p-3 text-xs space-y-2">
+                <p className="text-slate-600">{NORMAS_ORDENACION[26].descripcion}</p>
+                <div className="bg-green-50 rounded p-2">
+                  <div className="font-semibold text-green-800 mb-1">🎁 Beneficios:</div>
+                  <ul className="text-green-700 space-y-0.5">
+                    {NORMAS_ORDENACION[26].beneficios.map((b, i) => (
+                      <li key={i}>✓ {b}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-blue-50 rounded p-2">
+                  <div className="font-semibold text-blue-800 mb-1">📋 Requisitos:</div>
+                  <ul className="text-blue-700 space-y-0.5">
+                    {NORMAS_ORDENACION[26].requisitos.map((r, i) => (
+                      <li key={i}>• {r}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-amber-50 rounded p-2">
+                  <div className="font-semibold text-amber-800">⚠️ Importante:</div>
+                  <p className="text-amber-700">{NORMAS_ORDENACION[26].importante}</p>
+                </div>
+              </div>
+            </details>
+
+            {/* Other Normas Summary */}
+            <details className="bg-slate-50 rounded-lg overflow-hidden">
+              <summary className="bg-slate-100 px-3 py-2 cursor-pointer font-semibold text-sm text-slate-700 flex justify-between">
+                <span>Otras Normas (9, 10, 13, 17)</span>
+                <span className="text-slate-400">▼</span>
+              </summary>
+              <div className="p-3 text-xs space-y-3">
+                <div className="bg-white rounded p-2 border">
+                  <div className="font-semibold text-slate-800">Norma 9: {NORMAS_ORDENACION[9].titulo}</div>
+                  <p className="text-slate-600 mt-1">{NORMAS_ORDENACION[9].descripcion}</p>
+                  <p className="text-amber-700 mt-1 italic">{NORMAS_ORDENACION[9].importante}</p>
+                </div>
+                <div className="bg-white rounded p-2 border">
+                  <div className="font-semibold text-slate-800">Norma 10: {NORMAS_ORDENACION[10].titulo}</div>
+                  <p className="text-slate-600 mt-1">{NORMAS_ORDENACION[10].descripcion}</p>
+                  <p className="text-amber-700 mt-1 italic">{NORMAS_ORDENACION[10].importante}</p>
+                </div>
+                <div className="bg-white rounded p-2 border">
+                  <div className="font-semibold text-slate-800">Norma 13: {NORMAS_ORDENACION[13].titulo}</div>
+                  <p className="text-slate-600 mt-1">{NORMAS_ORDENACION[13].descripcion}</p>
+                  <p className="text-amber-700 mt-1 italic">{NORMAS_ORDENACION[13].importante}</p>
+                </div>
+                <div className="bg-white rounded p-2 border">
+                  <div className="font-semibold text-slate-800">Norma 17: {NORMAS_ORDENACION[17].titulo}</div>
+                  <p className="text-slate-600 mt-1">{NORMAS_ORDENACION[17].descripcion}</p>
+                  <p className="text-amber-700 mt-1 italic">{NORMAS_ORDENACION[17].importante}</p>
+                </div>
+              </div>
+            </details>
           </div>
-        </div>
+        </details>
 
         {/* Cálculos */}
         <div className="bg-blue-50 rounded-lg p-3">
