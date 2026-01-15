@@ -331,7 +331,7 @@ const PropertyCard = ({ property }) => {
   let densidadM2 = 50;
   if (property.densidad_d?.includes('33')) densidadM2 = 33;
   else if (property.densidad_d?.includes('100')) densidadM2 = 100;
-  const numViviendas = supTerreno > 0 ? Math.floor(supTerreno / densidadM2) : '-';
+  const numViviendas = supTerreno > 0 ? Math.round(supTerreno / densidadM2) : '-';
   
   const cuentaMatch = property.liga_ciuda?.match(/cuentaCatastral=([^&]+)/);
   const cuentaCatastral = cuentaMatch ? cuentaMatch[1] : null;
@@ -397,25 +397,40 @@ const PropertyCard = ({ property }) => {
                   <div>Lon: {parseFloat(property.longitud).toFixed(6)}</div>
                 </div>
                 <a 
-                  href={`https://sig.cdmx.gob.mx/sig_cdmx/?x=${property.longitud}&y=${property.latitud}&zoomLevel=8`}
+                  href={`https://www.google.com/maps?q=${property.latitud},${property.longitud}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="bg-gob-primary text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-gob-dark block"
                 >
-                  🗺️ Ver en SIG CDMX
-                </a>
-                <a 
-                  href={`https://www.google.com/maps?q=${property.latitud},${property.longitud}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 underline block"
-                >
-                  📍 Google Maps
+                  📍 Ver en Google Maps
                 </a>
               </div>
             ) : (
               <span className="text-xs text-slate-400">Sin coordenadas</span>
             )}
+          </div>
+        </div>
+
+        {/* Cálculos */}
+        <div className="bg-blue-50 rounded-lg p-3">
+          <h3 className="text-blue-800 font-bold text-sm mb-2">📐 Cálculos</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div className="text-center">
+              <div className="text-blue-600 font-bold text-lg">{Math.round(supTerreno * cosMax).toLocaleString()}</div>
+              <div className="text-xs text-blue-700">m² Desplante</div>
+            </div>
+            <div className="text-center">
+              <div className="text-blue-600 font-bold text-lg">{typeof supMaxConst === 'number' ? supMaxConst.toLocaleString() : supMaxConst}</div>
+              <div className="text-xs text-blue-700">m² Máx. Const.</div>
+            </div>
+            <div className="text-center">
+              <div className="text-blue-600 font-bold text-lg">{numViviendas}</div>
+              <div className="text-xs text-blue-700">Viviendas Máx.</div>
+            </div>
+            <div className="text-center">
+              <div className="text-blue-600 font-bold text-lg">{niveles * 3.6}m</div>
+              <div className="text-xs text-blue-700">Altura Máx.</div>
+            </div>
           </div>
         </div>
 
@@ -730,29 +745,6 @@ const PropertyCard = ({ property }) => {
           </div>
         </details>
 
-        {/* Cálculos */}
-        <div className="bg-blue-50 rounded-lg p-3">
-          <h3 className="text-blue-800 font-bold text-sm mb-2">📐 Cálculos</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-            <div className="text-center">
-              <div className="text-blue-600 font-bold text-lg">{Math.round(supTerreno * cosMax).toLocaleString()}</div>
-              <div className="text-xs text-blue-700">m² Desplante</div>
-            </div>
-            <div className="text-center">
-              <div className="text-blue-600 font-bold text-lg">{typeof supMaxConst === 'number' ? supMaxConst.toLocaleString() : supMaxConst}</div>
-              <div className="text-xs text-blue-700">m² Máx. Const.</div>
-            </div>
-            <div className="text-center">
-              <div className="text-blue-600 font-bold text-lg">{numViviendas}</div>
-              <div className="text-xs text-blue-700">Viviendas Máx.</div>
-            </div>
-            <div className="text-center">
-              <div className="text-blue-600 font-bold text-lg">{niveles * 3.6}m</div>
-              <div className="text-xs text-blue-700">Altura Máx.</div>
-            </div>
-          </div>
-        </div>
-
         {/* Restricciones */}
         {restricciones.length > 0 && (
           <div className="space-y-3">
@@ -795,10 +787,10 @@ const PropertyCard = ({ property }) => {
             </a>
           )}
           {property.latitud && property.longitud && (
-            <a href={`https://sig.cdmx.gob.mx/sig_cdmx/?x=${property.longitud}&y=${property.latitud}&zoomLevel=8`}
+            <a href={`https://www.google.com/maps?q=${property.latitud},${property.longitud}`}
                target="_blank" rel="noopener noreferrer"
                className="flex-1 bg-gob-primary hover:bg-gob-dark text-white text-center py-2 px-3 rounded-lg text-sm font-medium">
-              🗺️ SIG CDMX Mapa
+              📍 Google Maps
             </a>
           )}
         </div>
