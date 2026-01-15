@@ -1407,18 +1407,27 @@ INSTRUCCIONES:
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Minimal Header - Login only */}
+      {/* Back button - Top Left */}
+      {(selectedProperty || viewMode === 'bookmarks') && (
+        <div className="absolute top-0 left-0 p-4 z-10">
+          <button 
+            onClick={() => {
+              if (selectedProperty) {
+                setSelectedProperty(null);
+              } else {
+                setViewMode('search');
+              }
+            }} 
+            className="flex items-center gap-1 text-slate-600 hover:text-gob-primary text-sm font-medium bg-white rounded-full px-3 py-1.5 shadow-sm"
+          >
+            ← Volver
+          </button>
+        </div>
+      )}
+
+      {/* Minimal Header - Right side */}
       <header className="absolute top-0 right-0 p-4 z-10">
         <div className="flex items-center gap-3">
-          {selectedProperty && (
-            <button 
-              onClick={() => setSelectedProperty(null)} 
-              className="text-slate-600 hover:text-gob-primary text-sm font-medium"
-            >
-              ← Volver
-            </button>
-          )}
-          
           {/* Bookmarks Button - only when logged in and not viewing a property */}
           {user && !selectedProperty && (
             <button
