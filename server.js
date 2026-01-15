@@ -268,8 +268,8 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       await pool.query('DELETE FROM alcaldias_loaded WHERE alcaldia = $1', [alcaldia]);
     }
     
-    // Insert records in batches
-    const batchSize = 1000;
+    // FAST BATCH INSERT - insert 100 records at a time
+    const batchSize = 100;
     const client = await pool.connect();
     
     try {
@@ -278,34 +278,43 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       for (let i = 0; i < records.length; i += batchSize) {
         const batch = records.slice(i, i + batchSize);
         
+        // Build multi-row INSERT
+        const values = [];
+        const placeholders = [];
+        let paramIndex = 1;
+        
         for (const record of batch) {
-          await client.query(`
-            INSERT INTO predios (
-              alcaldia, calle, no_externo, colonia, codigo_pos,
-              superficie, uso_descri, densidad_d, niveles, altura,
-              area_libre, minimo_viv, liga_ciuda, longitud, latitud
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-          `, [
+          placeholders.push(`($${paramIndex}, $${paramIndex+1}, $${paramIndex+2}, $${paramIndex+3}, $${paramIndex+4}, $${paramIndex+5}, $${paramIndex+6}, $${paramIndex+7}, $${paramIndex+8}, $${paramIndex+9}, $${paramIndex+10}, $${paramIndex+11}, $${paramIndex+12}, $${paramIndex+13}, $${paramIndex+14})`);
+          values.push(
             record.alcaldia || alcaldia,
-            record.calle,
-            record.no_externo,
-            record.colonia,
-            record.codigo_pos,
+            record.calle || '',
+            record.no_externo || '',
+            record.colonia || '',
+            record.codigo_pos || '',
             parseFloat(record.superficie) || null,
-            record.uso_descri,
-            record.densidad_d,
-            record.niveles,
-            record.altura,
-            record.area_libre,
-            record.minimo_viv,
-            record.liga_ciuda,
+            record.uso_descri || '',
+            record.densidad_d || '',
+            record.niveles || '',
+            record.altura || '',
+            record.area_libre || '',
+            record.minimo_viv || '',
+            record.liga_ciuda || '',
             parseFloat(record.longitud) || null,
             parseFloat(record.latitud) || null
-          ]);
-          recordsInserted++;
+          );
+          paramIndex += 15;
         }
         
-        console.log(`Inserted ${Math.min(i + batchSize, records.length)}/${records.length} records...`);
+        await client.query(`
+          INSERT INTO predios (
+            alcaldia, calle, no_externo, colonia, codigo_pos,
+            superficie, uso_descri, densidad_d, niveles, altura,
+            area_libre, minimo_viv, liga_ciuda, longitud, latitud
+          ) VALUES ${placeholders.join(', ')}
+        `, values);
+        
+        recordsInserted += batch.length;
+        console.log(`Inserted ${recordsInserted}/${records.length} records...`);
       }
       
       // Record the loaded alcaldía
