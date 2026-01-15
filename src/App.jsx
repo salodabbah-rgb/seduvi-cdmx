@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { ReglamentoConstruccionView } from './components/ReglamentoConstruccionView';
 
 // =============================================================================
 // AUTH HELPERS
@@ -1049,7 +1050,7 @@ export default function App() {
   const [googleLoaded, setGoogleLoaded] = useState(false);
   const [bookmarks, setBookmarks] = useState([]);
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [viewMode, setViewMode] = useState('search'); // 'search' or 'bookmarks'
+  const [viewMode, setViewMode] = useState('search'); // 'search', 'bookmarks', or 'reglamento'
   const chatEndRef = useRef(null);
 
   // Create API instance with current token
@@ -1408,7 +1409,7 @@ INSTRUCCIONES:
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Back button - Top Left */}
-      {(selectedProperty || viewMode === 'bookmarks') && (
+      {(selectedProperty || viewMode === 'bookmarks' || viewMode === 'reglamento') && (
         <div className="absolute top-0 left-0 p-4 z-10">
           <button 
             onClick={() => {
@@ -1428,6 +1429,21 @@ INSTRUCCIONES:
       {/* Minimal Header - Right side */}
       <header className="absolute top-0 right-0 p-4 z-10">
         <div className="flex items-center gap-3">
+          {/* Reglamento Button - visible for all users */}
+          {!selectedProperty && (
+            <button
+              onClick={() => setViewMode(viewMode === 'reglamento' ? 'search' : 'reglamento')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                viewMode === 'reglamento' 
+                  ? 'bg-amber-500 text-white' 
+                  : 'bg-white text-slate-600 hover:bg-slate-100 shadow-sm'
+              }`}
+            >
+              <span>📜</span>
+              <span className="hidden sm:inline">Reglamento</span>
+            </button>
+          )}
+          
           {/* Bookmarks Button - only when logged in and not viewing a property */}
           {user && !selectedProperty && (
             <button
@@ -1519,6 +1535,13 @@ INSTRUCCIONES:
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Reglamento de Construcciones View */}
+            {viewMode === 'reglamento' && (
+              <div className="space-y-4">
+                <ReglamentoConstruccionView api={api} />
               </div>
             )}
 
