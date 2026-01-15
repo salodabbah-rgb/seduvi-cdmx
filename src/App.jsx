@@ -996,7 +996,8 @@ const PropertyCard = ({ property, chatMessages, chatInput, setChatInput, handleC
 // =============================================================================
 
 // Google Client ID
-const GOOGLE_CLIENT_ID = '1003938952498-ij3m51a2rj1bpgtcctf4dak1dji4cq1s.apps.googleusercontent.com';
+// Google Client ID - set in .env file as VITE_GOOGLE_CLIENT_ID
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 export default function App() {
   const [stats, setStats] = useState({ totalPredios: 0, alcaldias: [] });
@@ -1042,7 +1043,7 @@ export default function App() {
 
   // Initialize Google Sign-In when loaded
   useEffect(() => {
-    if (googleLoaded && window.google && !user) {
+    if (googleLoaded && window.google && !user && GOOGLE_CLIENT_ID) {
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleGoogleLogin,
@@ -1086,7 +1087,7 @@ export default function App() {
   
   // Render Google Sign-In button when ready
   useEffect(() => {
-    if (googleLoaded && window.google && !user && googleButtonRef.current) {
+    if (googleLoaded && window.google && !user && googleButtonRef.current && GOOGLE_CLIENT_ID) {
       window.google.accounts.id.renderButton(
         googleButtonRef.current,
         { 
