@@ -52,18 +52,6 @@ const createApi = (getToken) => ({
     if (!res.ok) throw new Error(`API error: ${res.status}`);
     return res.json();
   },
-  async upload(file) {
-    const token = getToken();
-    const formData = new FormData();
-    formData.append('file', file);
-    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-    const res = await fetch('/api/upload', { method: 'POST', body: formData, headers });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Upload failed');
-    }
-    return res.json();
-  },
   async delete(endpoint) {
     const token = getToken();
     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
@@ -442,7 +430,7 @@ const getRestricciones = (property) => {
 // PROPERTY CARD COMPONENT
 // =============================================================================
 
-const PropertyCard = ({ property }) => {
+const PropertyCard = ({ property, chatMessages, chatInput, setChatInput, handleChat, isChatting, chatEndRef }) => {
   const supTerreno = parseFloat(property.superficie) || 0;
   const niveles = parseInt(property.niveles) || 4;
   const areaLibre = parseFloat(property.area_libre) || 20;
@@ -555,6 +543,59 @@ const PropertyCard = ({ property }) => {
             </div>
           </div>
         </div>
+
+        {/* Chat - Expandable */}
+        <details className="group bg-slate-50 rounded-lg overflow-hidden">
+          <summary className="bg-slate-100 px-4 py-3 cursor-pointer font-semibold text-sm text-slate-700 flex justify-between items-center hover:bg-slate-200 transition-colors">
+            <span>💬 Consulta sobre este predio</span>
+            <span className="text-slate-400 group-open:rotate-180 transition-transform">▼</span>
+          </summary>
+          <div className="p-4">
+            {chatMessages.length > 0 && (
+              <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
+                {chatMessages.map((m, i) => (
+                  <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
+                      m.role === 'user' ? 'bg-gob-primary text-white' : 'bg-white border'
+                    }`}>
+                      {m.content}
+                    </div>
+                  </div>
+                ))}
+                {isChatting && <div className="text-slate-400 text-sm">⏳ Analizando...</div>}
+                <div ref={chatEndRef} />
+              </div>
+            )}
+            
+            {chatMessages.length === 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {['¿Puedo poner un bar?', '¿Qué permisos necesito?', '¿Cuántas viviendas puedo construir?'].map(q => (
+                  <button key={q} onClick={() => setChatInput(q)} className="text-xs px-3 py-1.5 bg-white hover:bg-slate-100 rounded-full border">
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleChat()}
+                placeholder="Pregunta sobre el predio..."
+                className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gob-primary bg-white"
+              />
+              <button
+                onClick={handleChat}
+                disabled={isChatting || !chatInput.trim()}
+                className="bg-gob-primary hover:bg-gob-dark disabled:bg-slate-300 text-white px-4 py-2 rounded-lg"
+              >
+                Enviar
+              </button>
+            </div>
+          </div>
+        </details>
 
         {/* Zonificación */}
         <div>
@@ -967,8 +1008,6 @@ export default function App() {
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [searchHistory, setSearchHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [isChatting, setIsChatting] = useState(false);
@@ -976,7 +1015,6 @@ export default function App() {
   const [authToken, setAuthToken] = useState(null);
   const [googleLoaded, setGoogleLoaded] = useState(false);
   const chatEndRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   // Create API instance with current token
   const api = createApi(() => authToken);
@@ -1047,11 +1085,24 @@ export default function App() {
     setSearchHistory([]);
   };
 
-  const showGoogleLoginPrompt = () => {
-    if (window.google) {
-      window.google.accounts.id.prompt();
+  const googleButtonRef = useRef(null);
+  
+  // Render Google Sign-In button when ready
+  useEffect(() => {
+    if (googleLoaded && window.google && !user && googleButtonRef.current) {
+      window.google.accounts.id.renderButton(
+        googleButtonRef.current,
+        { 
+          theme: 'outline', 
+          size: 'medium',
+          type: 'standard',
+          shape: 'rectangular',
+          text: 'signin_with',
+          logo_alignment: 'left'
+        }
+      );
     }
-  };
+  }, [googleLoaded, user]);
 
   // Load initial data
   useEffect(() => {
@@ -1101,35 +1152,6 @@ export default function App() {
       console.error('Search failed:', err);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    setIsUploading(true);
-    setUploadStatus(null);
-    
-    try {
-      const result = await api.upload(file);
-      setUploadStatus({ success: true, message: result.message });
-      loadStats();
-    } catch (err) {
-      setUploadStatus({ success: false, message: err.message });
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handleDeleteAlcaldia = async (alcaldia) => {
-    if (!confirm(`¿Eliminar todos los datos de ${alcaldia}?`)) return;
-    try {
-      await api.delete(`/alcaldia/${alcaldia}`);
-      loadStats();
-    } catch (err) {
-      console.error('Delete failed:', err);
     }
   };
 
@@ -1296,18 +1318,7 @@ INSTRUCCIONES:
                 </button>
               </div>
             ) : (
-              <button
-                onClick={showGoogleLoginPrompt}
-                className="flex items-center gap-2 bg-white text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-lime-50 transition-colors"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Ingresar
-              </button>
+              <div ref={googleButtonRef} className="google-signin-btn" />
             )}
           </div>
         </div>
@@ -1316,46 +1327,17 @@ INSTRUCCIONES:
       <main className="max-w-6xl mx-auto p-4">
         {!selectedProperty ? (
           <div className="space-y-4">
-            {/* Upload Section */}
-            <div className="bg-white rounded-xl shadow-lg p-4">
-              <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Stats Bar */}
+            {stats.alcaldias.length > 0 && (
+              <div className="bg-white rounded-xl shadow-lg p-4">
                 <div className="flex items-center gap-3">
-                  <label className="bg-gob-primary hover:bg-gob-dark text-white px-4 py-2 rounded-lg cursor-pointer font-medium text-sm">
-                    <input ref={fileInputRef} type="file" accept=".csv" onChange={handleUpload} className="hidden" disabled={isUploading} />
-                    📂 {isUploading ? 'Subiendo...' : 'Cargar CSV'}
-                  </label>
-                  {stats.alcaldias.length > 0 && (
-                    <div className="text-sm text-slate-600">
-                      ✓ {stats.alcaldias.map(a => `${a.alcaldia} (${a.records_count.toLocaleString()})`).join(', ')}
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              {uploadStatus && (
-                <div className={`mt-3 p-2 rounded text-sm ${uploadStatus.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                  {uploadStatus.message}
-                </div>
-              )}
-
-              {/* Manage loaded alcaldías */}
-              {stats.alcaldias.length > 0 && (
-                <div className="mt-3 pt-3 border-t">
-                  <div className="text-xs text-slate-500 mb-2">Administrar datos:</div>
-                  <div className="flex flex-wrap gap-2">
-                    {stats.alcaldias.map(a => (
-                      <button
-                        key={a.alcaldia}
-                        onClick={() => handleDeleteAlcaldia(a.alcaldia)}
-                        className="text-xs px-2 py-1 bg-slate-100 hover:bg-red-100 hover:text-red-600 rounded"
-                      >
-                        {a.alcaldia} ✕
-                      </button>
-                    ))}
+                  <span className="text-lime-600 text-lg">✓</span>
+                  <div className="text-sm text-slate-600">
+                    {stats.alcaldias.map(a => `${a.alcaldia} (${a.records_count.toLocaleString()} predios)`).join(' • ')}
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Search */}
             {stats.totalPredios > 0 && (
@@ -1434,86 +1416,37 @@ INSTRUCCIONES:
             {/* Empty State */}
             {stats.totalPredios === 0 && (
               <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-                <div className="text-5xl mb-4">📂</div>
-                <h2 className="text-xl font-bold mb-2">Cargar datos SEDUVI</h2>
-                <p className="text-slate-500 mb-4">Sube los archivos CSV de las alcaldías</p>
+                <div className="text-5xl mb-4">🏛️</div>
+                <h2 className="text-xl font-bold mb-2">Base de datos vacía</h2>
+                <p className="text-slate-500 mb-4">No hay predios cargados en la base de datos.</p>
                 
                 {!user && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                     <p className="text-blue-800 text-sm">
-                      💡 <button onClick={showGoogleLoginPrompt} className="underline font-medium">Inicia sesión con Google</button> para guardar tu historial de búsquedas
+                      💡 Inicia sesión con Google (arriba a la derecha) para guardar tu historial de búsquedas
                     </p>
                   </div>
                 )}
                 
-                <div className="text-left max-w-md mx-auto bg-slate-50 rounded-lg p-4 text-sm">
-                  <p className="font-semibold mb-2">Archivos disponibles:</p>
-                  <ul className="space-y-1 text-slate-600">
-                    <li>• seduvi_benito_juarez.csv</li>
-                    <li>• seduvi_cuauhtemoc.csv</li>
-                    <li>• seduvi_miguel_hidalgo.csv</li>
-                    <li>• ... otras alcaldías</li>
-                  </ul>
+                <div className="text-left max-w-md mx-auto bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm">
+                  <p className="font-semibold text-amber-800 mb-2">⚠️ Contacta al administrador</p>
+                  <p className="text-amber-700">
+                    Los datos de SEDUVI deben ser cargados directamente en la base de datos por el administrador del sistema.
+                  </p>
                 </div>
               </div>
             )}
           </div>
         ) : (
-          <div className="space-y-4">
-            <PropertyCard property={selectedProperty} />
-            
-            {/* Chat */}
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-              <div className="bg-slate-100 px-4 py-3 border-b">
-                <h3 className="font-semibold">💬 Consulta sobre {selectedProperty.calle} {selectedProperty.no_externo}</h3>
-              </div>
-              <div className="p-4">
-                {chatMessages.length > 0 && (
-                  <div className="space-y-3 mb-4 max-h-80 overflow-y-auto">
-                    {chatMessages.map((m, i) => (
-                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
-                          m.role === 'user' ? 'bg-gob-primary text-white' : 'bg-slate-100'
-                        }`}>
-                          {m.content}
-                        </div>
-                      </div>
-                    ))}
-                    {isChatting && <div className="text-slate-400 text-sm">⏳ Analizando...</div>}
-                    <div ref={chatEndRef} />
-                  </div>
-                )}
-                
-                {chatMessages.length === 0 && (
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {['¿Puedo poner un bar?', '¿Qué permisos necesito?', '¿Cuántas viviendas puedo construir?'].map(q => (
-                      <button key={q} onClick={() => setChatInput(q)} className="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-full">
-                        {q}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleChat()}
-                    placeholder="Pregunta sobre el predio..."
-                    className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gob-primary"
-                  />
-                  <button
-                    onClick={handleChat}
-                    disabled={isChatting || !chatInput.trim()}
-                    className="bg-gob-primary hover:bg-gob-dark disabled:bg-slate-300 text-white px-4 py-2 rounded-lg"
-                  >
-                    Enviar
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <PropertyCard 
+            property={selectedProperty}
+            chatMessages={chatMessages}
+            chatInput={chatInput}
+            setChatInput={setChatInput}
+            handleChat={handleChat}
+            isChatting={isChatting}
+            chatEndRef={chatEndRef}
+          />
         )}
       </main>
     </div>
