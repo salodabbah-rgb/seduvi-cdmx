@@ -62,11 +62,22 @@ export function ReglamentoConstruccionView({ api }) {
 
   // Buscar en el reglamento
   const handleSearch = (query = searchQuery) => {
-    if (!query.trim() || !reglamento) return;
+    if (!query.trim()) return;
+    if (!reglamento || !reglamento.articulos) {
+      console.error('Reglamento not loaded');
+      return;
+    }
     
-    const searchTerms = query.toLowerCase().split(' ').filter(t => t.length > 2);
+    const searchTerms = query.toLowerCase().split(' ').filter(t => t.length >= 2);
+    
+    if (searchTerms.length === 0) {
+      setSearchResults([]);
+      setViewMode('busqueda');
+      return;
+    }
     
     const results = reglamento.articulos.filter(art => {
+      if (!art.texto) return false;
       const texto = art.texto.toLowerCase();
       return searchTerms.some(term => texto.includes(term));
     }).map(art => {
@@ -118,8 +129,8 @@ export function ReglamentoConstruccionView({ api }) {
 
   // Resaltar términos de búsqueda
   const highlightText = (text, query) => {
-    if (!query) return text;
-    const terms = query.toLowerCase().split(' ').filter(t => t.length > 2);
+    if (!query || !text) return text || '';
+    const terms = query.toLowerCase().split(' ').filter(t => t.length >= 2);
     let result = text;
     terms.forEach(term => {
       const regex = new RegExp(`(${term})`, 'gi');

@@ -1430,10 +1430,11 @@ const formatNormasParaChat = () => {
 // =============================================================================
 
 const getRestricciones = (property) => {
-  const colonia = (property.colonia || '').toUpperCase();
-  const alcaldia = (property.alcaldia || '').toUpperCase();
-  const zonificacion = (property.uso_descri || '').toUpperCase();
-  const restricciones = [];
+  try {
+    const colonia = (property.colonia || '').toUpperCase();
+    const alcaldia = (property.alcaldia || '').toUpperCase();
+    const zonificacion = (property.uso_descri || '').toUpperCase();
+    const restricciones = [];
   
   // Check ACP
   const coloniaClean = colonia.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -1476,6 +1477,10 @@ const getRestricciones = (property) => {
   }
   
   return restricciones;
+  } catch (err) {
+    console.error('Error getting restricciones:', err);
+    return [];
+  }
 };
 
 // =============================================================================
@@ -2788,10 +2793,12 @@ const PropertyCard = ({ property, chatMessages, chatInput, setChatInput, handleC
             {restricciones.filter(r => r.tipo === 'ACP').map((r, i) => (
               <div key={i} className="bg-amber-50 border-2 border-amber-400 rounded-lg p-4">
                 <h3 className="text-amber-800 font-bold text-sm mb-2">🏛️ {r.titulo}</h3>
-                <div className="text-xs text-amber-700 space-y-2">
-                  <div className="font-semibold">⚠️ Requisitos obligatorios:</div>
-                  <ul className="space-y-1">{r.requisitos.map((req, j) => <li key={j}>• {req}</li>)}</ul>
-                </div>
+                {r.requisitos && r.requisitos.length > 0 && (
+                  <div className="text-xs text-amber-700 space-y-2">
+                    <div className="font-semibold">⚠️ Requisitos obligatorios:</div>
+                    <ul className="space-y-1">{r.requisitos.map((req, j) => <li key={j}>• {req}</li>)}</ul>
+                  </div>
+                )}
               </div>
             ))}
             
@@ -2831,12 +2838,14 @@ const PropertyCard = ({ property, chatMessages, chatInput, setChatInput, handleC
                     <span className="text-green-700"> {r.excepcion.delimitacion}</span>
                   </div>
                 )}
-                <div className="text-xs text-red-700">
-                  <div className="font-semibold mb-1">Usos NO permitidos:</div>
-                  <ul className="grid md:grid-cols-2 gap-1">
-                    {r.prohibidos.map((uso, j) => <li key={j}>❌ {uso}</li>)}
-                  </ul>
-                </div>
+                {r.prohibidos && r.prohibidos.length > 0 && (
+                  <div className="text-xs text-red-700">
+                    <div className="font-semibold mb-1">Usos NO permitidos:</div>
+                    <ul className="grid md:grid-cols-2 gap-1">
+                      {r.prohibidos.map((uso, j) => <li key={j}>❌ {uso}</li>)}
+                    </ul>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -3163,17 +3172,11 @@ export default function App() {
     const restricciones = getRestricciones(selectedProperty);
     const normasAplicables = getNormasAplicables(selectedProperty);
     
-    // Calculate viviendas
-    let numViviendas = 'N/A';
-    const densidad = selectedProperty.densidad_d;
-    if (densidad) {
-      const match = densidad.match(/(\d+)\s*VIV/i);
-      if (match) {
-        const vivPor = parseInt(match[1]);
-        const viv = supMaxConst / vivPor;
-        numViviendas = viv >= 0.5 ? Math.round(viv) : Math.floor(viv);
-      }
-    }
+    // Calculate viviendas (same logic as PropertyCard)
+    let densidadM2Chat = 50;
+    if (selectedProperty.densidad_d?.includes('33')) densidadM2Chat = 33;
+    else if (selectedProperty.densidad_d?.includes('100')) densidadM2Chat = 100;
+    const numViviendas = supTerreno > 0 ? Math.round(supTerreno / densidadM2Chat) : 'N/A';
     
     // Build comprehensive restrictions text
     let restriccionesTexto = '';
