@@ -1288,6 +1288,143 @@ const getNormasAplicables = (property) => {
   return normasAplicables;
 };
 
+// Helper function to format all NORMAS_ORDENACION for chat context
+const formatNormasParaChat = () => {
+  let texto = '\n\n===== NORMAS DE ORDENACIÓN APLICABLES (28 NORMAS) =====\n';
+  texto += 'Referencia completa de las Normas de Ordenación que regulan el desarrollo urbano en CDMX:\n\n';
+  
+  Object.entries(NORMAS_ORDENACION).forEach(([num, norma]) => {
+    texto += `--- NORMA ${num}: ${norma.titulo} ---\n`;
+    texto += `Descripción: ${norma.descripcion}\n`;
+    texto += `Aplicación: ${norma.aplicacion}\n`;
+    texto += `Categoría: ${norma.categoria}\n`;
+    
+    if (norma.formulas) {
+      texto += `Fórmulas: ${norma.formulas.join(' | ')}\n`;
+    }
+    if (norma.ejemplo) {
+      texto += `Ejemplo: ${norma.ejemplo}\n`;
+    }
+    if (norma.restricciones && Array.isArray(norma.restricciones)) {
+      texto += `Restricciones: ${norma.restricciones.join('; ')}\n`;
+    }
+    if (norma.requisitos && Array.isArray(norma.requisitos)) {
+      texto += `Requisitos: ${norma.requisitos.join('; ')}\n`;
+    }
+    if (norma.permitido) {
+      texto += `Permitido: ${norma.permitido.join('; ')}\n`;
+    }
+    if (norma.prohibido) {
+      texto += `Prohibido: ${norma.prohibido.join('; ')}\n`;
+    }
+    if (norma.tablaRestricciones) {
+      texto += `Tabla de restricciones: ${Object.entries(norma.tablaRestricciones).map(([k,v]) => `${k}: ${v}`).join('; ')}\n`;
+    }
+    if (norma.tablaDensidades) {
+      texto += `Densidades: ${Object.entries(norma.tablaDensidades).map(([k,v]) => `${k}: ${v}`).join('; ')}\n`;
+    }
+    if (norma.tablaMinimos) {
+      texto += `Mínimos por zonificación: ${Object.entries(norma.tablaMinimos).map(([k,v]) => `${k}: lote ${v.loteMin}, frente ${v.frenteMin}`).join('; ')}\n`;
+    }
+    if (norma.importante) {
+      texto += `⚠️ IMPORTANTE: ${norma.importante}\n`;
+    }
+    texto += '\n';
+  });
+  
+  // Add NORMAS_PARTICULARES
+  texto += '\n===== NORMAS PARTICULARES POR ZONA =====\n';
+  
+  texto += `\n--- ÁREAS DE CONSERVACIÓN PATRIMONIAL ---\n`;
+  texto += `Descripción: ${NORMAS_PARTICULARES.areasConservacionPatrimonial.descripcion}\n`;
+  texto += `Restricciones: ${NORMAS_PARTICULARES.areasConservacionPatrimonial.restricciones.join('; ')}\n`;
+  texto += `Requisitos de obra: ${NORMAS_PARTICULARES.areasConservacionPatrimonial.requisitosObra.join('; ')}\n`;
+  
+  texto += `\n--- CORREDORES URBANOS ---\n`;
+  Object.entries(NORMAS_PARTICULARES.corredoresUrbanos.tipos).forEach(([tipo, info]) => {
+    texto += `${tipo}: Vialidades como ${info.vialidades.join(', ')}. ${info.caracteristicas.join('; ')}\n`;
+  });
+  
+  texto += `\n--- CENTROS DE BARRIO (CB) ---\n`;
+  texto += `Usos permitidos: ${NORMAS_PARTICULARES.centrosDeBarrio.usos.join('; ')}\n`;
+  texto += `Restricciones: ${NORMAS_PARTICULARES.centrosDeBarrio.restricciones.join('; ')}\n`;
+  
+  // Add REGLAMENTO DE CONSTRUCCIONES key articles
+  texto += '\n\n===== REGLAMENTO DE CONSTRUCCIONES PARA EL DISTRITO FEDERAL =====\n';
+  texto += 'Artículos clave del Reglamento de Construcciones (última reforma: 4 octubre 2024):\n\n';
+  
+  texto += `--- TÍTULO IV: MANIFESTACIONES DE CONSTRUCCIÓN ---\n`;
+  texto += `Artículo 53: Tipos de manifestación según superficie y niveles:\n`;
+  texto += `- TIPO A: Hasta 200m² de construcción en planta baja. NO requiere DRO. Uso habitacional unifamiliar.\n`;
+  texto += `- TIPO B: De 201m² hasta 5,000m² O hasta 5 niveles. Requiere DRO registrado.\n`;
+  texto += `- TIPO C: Más de 5,000m² O más de 5 niveles. Requiere DRO + Corresponsables.\n\n`;
+  
+  texto += `Artículo 54: Documentos para Manifestación de Construcción:\n`;
+  texto += `- Formato oficial firmado por propietario y DRO\n`;
+  texto += `- Constancia de alineamiento y número oficial\n`;
+  texto += `- Certificado de zonificación de uso de suelo\n`;
+  texto += `- Planos arquitectónicos, estructurales e instalaciones\n`;
+  texto += `- Memoria de cálculo estructural (Tipo B y C)\n`;
+  texto += `- Estudio de mecánica de suelos (según zona)\n\n`;
+  
+  texto += `--- TÍTULO III: DIRECTORES RESPONSABLES DE OBRA (DRO) ---\n`;
+  texto += `Artículo 26: El DRO es el profesional registrado responsable de:\n`;
+  texto += `- Verificar que el proyecto cumple con el Reglamento\n`;
+  texto += `- Supervisar la ejecución de la obra\n`;
+  texto += `- Responder legalmente por la seguridad de la construcción\n`;
+  texto += `- Requisitos: Arquitecto o Ingeniero Civil titulado con 5+ años de experiencia\n\n`;
+  
+  texto += `Artículo 36: Corresponsables (requeridos en Tipo C):\n`;
+  texto += `- Corresponsable en Seguridad Estructural\n`;
+  texto += `- Corresponsable en Diseño Urbano y Arquitectónico\n`;
+  texto += `- Corresponsable en Instalaciones\n\n`;
+  
+  texto += `--- TÍTULO V: PROYECTO ARQUITECTÓNICO ---\n`;
+  texto += `Artículo 71: Todo proyecto debe cumplir con:\n`;
+  texto += `- Zonificación y uso de suelo autorizado\n`;
+  texto += `- COS y CUS máximos permitidos\n`;
+  texto += `- Área libre mínima requerida\n`;
+  texto += `- Altura y niveles según programa de desarrollo urbano\n`;
+  texto += `- Restricciones de construcción frontales, laterales y posteriores\n\n`;
+  
+  texto += `Artículo 75: Alturas y restricciones:\n`;
+  texto += `- Altura máxima = Niveles × 3.60m (habitacional) o 4.50m (otros usos)\n`;
+  texto += `- Se permiten 3.50m adicionales para instalaciones en azotea\n`;
+  texto += `- Restricción posterior: según número de niveles (ver Norma 7)\n\n`;
+  
+  texto += `Artículo 80: Estacionamientos requeridos:\n`;
+  texto += `- Vivienda: 1 cajón por cada vivienda\n`;
+  texto += `- Oficinas: 1 cajón por cada 30m² construidos\n`;
+  texto += `- Comercio: 1 cajón por cada 40m² construidos\n`;
+  texto += `- Dimensiones mínimas: 5.00m × 2.40m (auto chico), 5.00m × 2.70m (auto grande)\n\n`;
+  
+  texto += `--- TÍTULO VI: SEGURIDAD ESTRUCTURAL ---\n`;
+  texto += `Artículo 96: Toda construcción debe garantizar seguridad estructural.\n`;
+  texto += `Artículo 139: Zonas sísmicas de la CDMX:\n`;
+  texto += `- Zona I (Lomas): Roca firme, menor amplificación\n`;
+  texto += `- Zona II (Transición): Condiciones intermedias\n`;
+  texto += `- Zona III (Lago): Mayor amplificación sísmica, requiere estudios especiales\n\n`;
+  
+  texto += `--- TÍTULO X: DEMOLICIONES ---\n`;
+  texto += `Artículo 261: Requisitos para demolición:\n`;
+  texto += `- Aviso de demolición a la Alcaldía\n`;
+  texto += `- Si >100m²: requiere Programa de demolición con DRO\n`;
+  texto += `- En ACP: requiere dictamen de Patrimonio Cultural Urbano\n`;
+  texto += `- Monumento catalogado: NO se permite demoler\n\n`;
+  
+  texto += `--- NORMAS TÉCNICAS COMPLEMENTARIAS (NTC) ---\n`;
+  texto += `Son parte integral del Reglamento y establecen especificaciones detalladas para:\n`;
+  texto += `- Diseño por sismo (coeficientes sísmicos, espectros de diseño)\n`;
+  texto += `- Diseño por viento\n`;
+  texto += `- Cimentaciones (profundidad, capacidad de carga según zona)\n`;
+  texto += `- Mampostería, concreto y acero estructural\n`;
+  texto += `- Instalaciones hidráulicas, sanitarias, eléctricas y de gas\n`;
+  texto += `- Criterios de accesibilidad\n`;
+  texto += `- Prevención de incendios\n`;
+  
+  return texto;
+};
+
 // =============================================================================
 // GET RESTRICTIONS FOR A PROPERTY
 // =============================================================================
@@ -2637,40 +2774,11 @@ const PropertyCard = ({ property, chatMessages, chatInput, setChatInput, handleC
               </div>
             </details>
 
-            {/* Índice de Normas - Referencia Rápida */}
-            <details className="bg-gradient-to-r from-slate-100 to-slate-50 rounded-lg overflow-hidden border border-slate-300">
-              <summary className="px-3 py-2 cursor-pointer font-semibold text-sm text-slate-800 flex justify-between bg-slate-200">
-                <span>📑 ÍNDICE COMPLETO: 28 Normas de Ordenación</span>
-                <span className="text-slate-500">▼</span>
-              </summary>
-              <div className="p-3 text-xs">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {Object.entries(NORMAS_ORDENACION).map(([num, norma]) => (
-                    <div key={num} className={`p-2 rounded border ${
-                      norma.categoria === 'intensidad' ? 'bg-blue-50 border-blue-200' :
-                      norma.categoria === 'altura' ? 'bg-purple-50 border-purple-200' :
-                      norma.categoria === 'restriccion' ? 'bg-red-50 border-red-200' :
-                      norma.categoria === 'ambiental' ? 'bg-green-50 border-green-200' :
-                      norma.categoria === 'procedimiento' ? 'bg-gray-50 border-gray-200' :
-                      norma.categoria === 'uso' ? 'bg-orange-50 border-orange-200' :
-                      norma.categoria === 'incentivo' ? 'bg-emerald-50 border-emerald-200' :
-                      'bg-white border-slate-200'
-                    }`}>
-                      <span className="font-bold">N°{num}:</span> {norma.titulo.slice(0, 50)}{norma.titulo.length > 50 ? '...' : ''}
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">🔵 Intensidad</span>
-                  <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-800">🟣 Altura</span>
-                  <span className="text-xs px-2 py-1 rounded bg-red-100 text-red-800">🔴 Restricción</span>
-                  <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-800">🟢 Ambiental</span>
-                  <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-800">⚪ Procedimiento</span>
-                  <span className="text-xs px-2 py-1 rounded bg-orange-100 text-orange-800">🟠 Uso</span>
-                  <span className="text-xs px-2 py-1 rounded bg-emerald-100 text-emerald-800">💚 Incentivo</span>
-                </div>
-              </div>
-            </details>
+            {/* Note about chat knowledge */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+              <span className="font-semibold">💡 Tip:</span> El chat tiene acceso completo a las <strong>28 Normas de Ordenación</strong> y al <strong>Reglamento de Construcciones</strong>. 
+              Pregunta sobre normas específicas (ej: "¿Qué dice la Norma 4?") o sobre el reglamento (ej: "¿Qué tipo de manifestación necesito?", "¿Qué hace el DRO?").
+            </div>
           </div>
         </details>
 
@@ -3053,6 +3161,7 @@ export default function App() {
     const supDesplante = supTerreno * cosMax;
     const supMaxConst = supTerreno * cusMax;
     const restricciones = getRestricciones(selectedProperty);
+    const normasAplicables = getNormasAplicables(selectedProperty);
     
     // Calculate viviendas
     let numViviendas = 'N/A';
@@ -3077,7 +3186,16 @@ export default function App() {
       }).join('\n');
     }
     
-    // Build comprehensive system prompt with ALL property data
+    // Build normas aplicables text
+    let normasAplicablesTexto = '\n\nNORMAS QUE APLICAN A ESTE PREDIO:\n';
+    normasAplicables.forEach(n => {
+      normasAplicablesTexto += `- Norma ${n.numero}: ${n.titulo} (${n.aplicaMotivo})\n`;
+    });
+    
+    // Get full norms reference
+    const normasCompletas = formatNormasParaChat();
+    
+    // Build comprehensive system prompt with ALL property data AND all 28 norms
     const systemPrompt = `Eres un experto en desarrollo urbano de la Ciudad de México. YA TIENES TODA la información del predio que el usuario está consultando. NO pidas la dirección ni datos adicionales - ya los tienes aquí:
 
 ===== DATOS DEL PREDIO =====
@@ -3099,11 +3217,13 @@ export default function App() {
 - Viviendas permitidas: ${numViviendas}
 - Mínimo m² por vivienda: ${selectedProperty.minimo_viv || 'No especificado'}
 ${restriccionesTexto}
+${normasAplicablesTexto}
 
 ===== REGLAS DE MANIFESTACIÓN DE CONSTRUCCIÓN =====
 - TIPO A (Simplificada): Hasta 200m² de construcción, no requiere DRO
 - TIPO B (Con DRO): Hasta 5,000m² o hasta 5 niveles, requiere DRO
 - TIPO C (Especial): Más de 5,000m² o más de 5 niveles, requiere DRO + Corresponsables
+${normasCompletas}
 
 INSTRUCCIONES:
 1. NUNCA pidas la dirección - ya la tienes arriba
@@ -3112,7 +3232,13 @@ INSTRUCCIONES:
 4. Usa los números exactos calculados arriba
 5. Responde en español, de forma práctica y útil
 6. Si te preguntan sobre usos permitidos, basa tu respuesta en el uso de suelo: "${selectedProperty.uso_descri}"
-7. Si te preguntan sobre construcción, usa los cálculos de superficie máxima`;
+7. Si te preguntan sobre construcción, usa los cálculos de superficie máxima
+8. NORMAS DE ORDENACIÓN: Si preguntan sobre "Norma 4", "Norma 10", etc., usa las 28 Normas de Ordenación detalladas arriba
+9. REGLAMENTO DE CONSTRUCCIÓN: Si preguntan sobre artículos, manifestaciones, DRO, demoliciones, etc., usa la información del Reglamento de Construcciones arriba
+10. Puedes citar las fórmulas, requisitos, restricciones y ejemplos de cada norma y artículo
+11. Diferencia claramente entre:
+    - "Normas de Ordenación" (28 normas del PGDU/PDDU que regulan uso de suelo, COS, CUS, densidad, etc.)
+    - "Reglamento de Construcciones" (artículos que regulan el proceso de construcción, manifestaciones, DRO, etc.)`;
     
     try {
       const token = authToken;
