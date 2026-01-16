@@ -676,8 +676,6 @@ const getProgramaParcial = (colonia, alcaldia) => {
       return programa;
     }
   }
-    }
-  }
   return null;
 };
 
@@ -1503,7 +1501,7 @@ const PropertyCard = ({ property, chatMessages, chatInput, setChatInput, handleC
               </div>
             ) : (
               <span className="text-xs text-slate-400">Sin coordenadas</span>
-            )}}
+            )}
           </div>
         </div>
 
