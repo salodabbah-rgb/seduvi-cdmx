@@ -1320,18 +1320,19 @@ const getRestricciones = (property) => {
   
   // Check Benito Juárez - Nápoles PPDU
   if (alcaldia.includes('BENITO JUAREZ') || alcaldia.includes('BENITO JUÁREZ')) {
-    const isNapolesZone = PDDU_NAPOLES.colonias.some(c => 
+    const napolesProgram = PROGRAMAS_PARCIALES.napoles;
+    const isNapolesZone = napolesProgram.colonias.some(c => 
       coloniaClean.includes(c.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase())
     );
     
     if (isNapolesZone) {
       restricciones.push({ 
         tipo: 'PPDU_NAPOLES', 
-        titulo: PDDU_NAPOLES.restriccionesGenerales.titulo,
-        prohibidos: PDDU_NAPOLES.restriccionesGenerales.prohibidos,
-        requisitos: PDDU_NAPOLES.restriccionesGenerales.requisitos,
-        programa: PDDU_NAPOLES.nombre,
-        fecha: PDDU_NAPOLES.fecha,
+        titulo: 'Restricciones PPDU Nápoles',
+        prohibidos: napolesProgram.usosProhibidos,
+        requisitos: napolesProgram.restricciones,
+        programa: napolesProgram.nombre,
+        fecha: napolesProgram.fechaPublicacion,
         aplica: true 
       });
     }
@@ -2757,114 +2758,6 @@ const PropertyCard = ({ property, chatMessages, chatInput, setChatInput, handleC
           )}
         </div>
 
-        {/* MAPAS OFICIALES CDMX - Sección Prominente */}
-        <details className="group bg-gradient-to-r from-purple-50 to-teal-50 rounded-lg overflow-hidden border-2 border-purple-200" open>
-          <summary className="bg-gradient-to-r from-purple-100 to-teal-100 px-4 py-3 cursor-pointer font-semibold text-sm text-purple-800 flex justify-between items-center">
-            <span className="flex items-center gap-2">
-              <span className="text-lg">🗺️</span>
-              Mapas Oficiales de Catastro y Uso de Suelo CDMX
-            </span>
-            <span className="text-purple-500 group-open:rotate-180 transition-transform">▼</span>
-          </summary>
-          <div className="p-4 space-y-3">
-            <p className="text-xs text-purple-700 mb-3">
-              Consulta la información oficial del predio en los sistemas gubernamentales de la CDMX:
-            </p>
-            
-            {/* Sistema Principal - SEDUVI CiudadMX */}
-            <a 
-              href={cuentaCatastral 
-                ? `http://ciudadmx.cdmx.gob.mx:8080/seduvi/?cuentaCatastral=${cuentaCatastral}`
-                : `http://ciudadmx.cdmx.gob.mx:8080/seduvi/`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🏛️</span>
-                <div>
-                  <div className="font-bold">SEDUVI CiudadMX</div>
-                  <div className="text-xs text-purple-200">Sistema de Información Geográfica de Uso de Suelo</div>
-                  {cuentaCatastral && (
-                    <div className="text-xs mt-1 bg-purple-500 px-2 py-0.5 rounded inline-block">
-                      Cuenta: {cuentaCatastral}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </a>
-            
-            {/* SIG CDMX Nuevo */}
-            <a 
-              href="https://sig.cdmx.gob.mx/sig_cdmx/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block bg-teal-600 hover:bg-teal-700 text-white px-4 py-3 rounded-lg transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">📊</span>
-                <div>
-                  <div className="font-bold">SIG CDMX (Sistema Nuevo)</div>
-                  <div className="text-xs text-teal-200">Sistema Abierto de Información Geográfica con 60+ capas</div>
-                </div>
-              </div>
-            </a>
-            
-            {/* OVICA Catastro */}
-            <a 
-              href="https://ovica.finanzas.cdmx.gob.mx/Mapa.aspx"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block bg-rose-600 hover:bg-rose-700 text-white px-4 py-3 rounded-lg transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🏠</span>
-                <div>
-                  <div className="font-bold">OVICA - Oficina Virtual del Catastro</div>
-                  <div className="text-xs text-rose-200">Consulta fichas catastrales y valores de predios</div>
-                </div>
-              </div>
-            </a>
-            
-            {/* Datos Abiertos */}
-            <a 
-              href="https://sig.cdmx.gob.mx/datos/descarga"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block bg-slate-600 hover:bg-slate-700 text-white px-4 py-3 rounded-lg transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">📁</span>
-                <div>
-                  <div className="font-bold">Datos Abiertos CDMX</div>
-                  <div className="text-xs text-slate-300">Descarga shapefiles y CSV de catastro y uso de suelo</div>
-                </div>
-              </div>
-            </a>
-            
-            {/* Certificado Digital */}
-            <a 
-              href="https://www.seduvi.cdmx.gob.mx/servicios/servicio/certificado_digital"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block bg-amber-600 hover:bg-amber-700 text-white px-4 py-3 rounded-lg transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">📜</span>
-                <div>
-                  <div className="font-bold">Tramitar CUZUS Digital</div>
-                  <div className="text-xs text-amber-200">Certificado Único de Zonificación de Uso de Suelo ($2,025 MXN)</div>
-                </div>
-              </div>
-            </a>
-            
-            <div className="bg-white/50 rounded-lg p-3 text-xs text-purple-700 border border-purple-200">
-              <strong>💡 Tip:</strong> El SIG CiudadMX es la fuente oficial de SEDUVI para consultar uso de suelo. 
-              Si necesitas un documento legal, debes tramitar el Certificado Único de Zonificación (CUZUS).
-            </div>
-          </div>
-        </details>
-
         {/* Disclaimer */}
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
           <strong>"VERSIÓN DE DIVULGACIÓN"</strong> - Para documento oficial, solicitar Certificado Único de Zonificación ante SEDUVI.
@@ -3557,103 +3450,27 @@ INSTRUCCIONES:
                     </div>
                     <div className="divide-y max-h-[60vh] overflow-y-auto">
                       {searchResults.map((row) => {
-                        // Extraer cuenta catastral del link
                         const cuentaMatch = row.liga_ciuda?.match(/cuentaCatastral=([^&]+)/);
                         const cuentaCatastral = cuentaMatch ? cuentaMatch[1] : null;
-                        const direccionCompleta = encodeURIComponent(`${row.calle} ${row.no_externo}, ${row.colonia}, ${row.alcaldia}, CDMX`);
                         
                         return (
-                          <div key={row.id} className="px-5 py-4 hover:bg-slate-50 transition-colors">
-                            <button
-                              onClick={() => setSelectedProperty(row)}
-                              className="w-full text-left"
-                            >
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <div className="font-semibold text-slate-800">{row.calle} {row.no_externo}</div>
-                                  <div className="text-sm text-slate-500">{row.colonia} • {row.alcaldia}</div>
-                                  <div className="text-xs text-gob-primary font-medium mt-1">📋 {row.uso_descri}</div>
-                                  {cuentaCatastral && (
-                                    <div className="text-xs text-slate-400 font-mono mt-0.5">Cuenta: {cuentaCatastral}</div>
-                                  )}
-                                </div>
-                                <span className="text-gob-primary text-sm font-medium bg-gob-primary/10 px-2 py-1 rounded">Ver Detalle →</span>
-                              </div>
-                            </button>
-                            
-                            {/* MAPAS - Google y Street View */}
-                            <div className="mt-3 space-y-2">
-                              <div className="flex gap-2">
-                                {row.latitud && row.longitud && (
-                                  <>
-                                    <a 
-                                      href={`https://www.google.com/maps?q=${row.latitud},${row.longitud}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="flex-1 bg-gob-primary hover:bg-gob-dark text-white text-center py-1.5 px-2 rounded text-xs font-medium flex items-center justify-center gap-1"
-                                    >
-                                      <span>🗺️</span> Google Maps
-                                    </a>
-                                    <a 
-                                      href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${row.latitud},${row.longitud}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-center py-1.5 px-2 rounded text-xs font-medium flex items-center justify-center gap-1"
-                                    >
-                                      <span>👁️</span> Street View
-                                    </a>
-                                  </>
+                          <button
+                            key={row.id}
+                            onClick={() => setSelectedProperty(row)}
+                            className="w-full text-left px-5 py-4 hover:bg-slate-50 transition-colors"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <div className="font-semibold text-slate-800">{row.calle} {row.no_externo}</div>
+                                <div className="text-sm text-slate-500">{row.colonia} • {row.alcaldia}</div>
+                                <div className="text-xs text-gob-primary font-medium mt-1">📋 {row.uso_descri}</div>
+                                {cuentaCatastral && (
+                                  <div className="text-xs text-slate-400 font-mono mt-0.5">Cuenta: {cuentaCatastral}</div>
                                 )}
                               </div>
-                              
-                              {/* MAPAS OFICIALES CDMX */}
-                              <div className="bg-gradient-to-r from-purple-50 to-teal-50 rounded-lg p-2 border border-purple-200">
-                                <div className="text-xs text-purple-700 font-medium mb-2 text-center">🏛️ Mapas Oficiales CDMX</div>
-                                <div className="grid grid-cols-2 gap-1.5">
-                                  <a 
-                                    href={cuentaCatastral 
-                                      ? `http://ciudadmx.cdmx.gob.mx:8080/seduvi/?cuentaCatastral=${cuentaCatastral}`
-                                      : `http://ciudadmx.cdmx.gob.mx:8080/seduvi/`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="bg-purple-600 hover:bg-purple-700 text-white text-center py-1.5 px-2 rounded text-xs font-medium flex items-center justify-center gap-1"
-                                  >
-                                    <span>🏛️</span> SEDUVI
-                                  </a>
-                                  <a 
-                                    href="https://sig.cdmx.gob.mx/sig_cdmx/"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="bg-teal-600 hover:bg-teal-700 text-white text-center py-1.5 px-2 rounded text-xs font-medium flex items-center justify-center gap-1"
-                                  >
-                                    <span>📊</span> SIG CDMX
-                                  </a>
-                                  <a 
-                                    href="https://ovica.finanzas.cdmx.gob.mx/Mapa.aspx"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="bg-rose-600 hover:bg-rose-700 text-white text-center py-1.5 px-2 rounded text-xs font-medium flex items-center justify-center gap-1"
-                                  >
-                                    <span>🏠</span> Catastro
-                                  </a>
-                                  <a 
-                                    href={`https://www.google.com/maps/search/${direccionCompleta}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="bg-slate-600 hover:bg-slate-700 text-white text-center py-1.5 px-2 rounded text-xs font-medium flex items-center justify-center gap-1"
-                                  >
-                                    <span>📍</span> Buscar Dir.
-                                  </a>
-                                </div>
-                              </div>
+                              <span className="text-gob-primary text-sm font-medium bg-gob-primary/10 px-2 py-1 rounded">Ver →</span>
                             </div>
-                          </div>
+                          </button>
                         );
                       })}
                     </div>
